@@ -33,7 +33,6 @@ uv sync --all-groups
 npm --prefix frontend ci
 ```
 
-uv uses public PyPI by default. If a lock unexpectedly references a private index, check `UV_INDEX` and `UV_EXTRA_INDEX_URL`; environment variables override project settings.
 
 Run the backend and frontend in separate terminals:
 
