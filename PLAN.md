@@ -50,7 +50,9 @@ All HTTP routes use JSON under `/api`, except deletion, which returns no body.
 | `POST` | `/api/task-suggestions` | Suggest priority and label for a title |
 | `GET` | `/api/health` | Support container and demo health checks |
 
-Task responses expose `id`, `title`, `completed`, `priority`, `label`, `created_at`, and `updated_at`. Create accepts `title` plus optional `priority` and `label`; patch accepts at least one editable task field. Unknown task IDs return `404`, invalid input returns `422`, and unexpected server errors use a generic `500` response.
+Task responses expose `id`, `title`, `completed`, `priority`, `label`, `created_at`, and `updated_at`. Create accepts `title` plus optional `priority` and `label`, and returns `201`; patch accepts at least one editable task field. Supplied fields cannot be null, unknown fields are rejected, and completion must be a JSON boolean. Task IDs must be positive integers within SQLite's signed 64-bit range. Unknown task IDs return `404`, invalid input returns `422`, and unexpected server errors use a generic `500` response.
+
+Errors use `{ "detail": string }`: `Task not found` for unknown tasks, `Invalid request` for validation errors, and `Internal server error` for unexpected failures. Validation responses omit the submitted input. Health returns `{ "status": "ok" }` as a liveness check.
 
 Suggestion request: `{ "title": string }`. Response: `{ "priority": string, "label": string, "source": "llm" | "fallback" }`. Expected OpenAI failures return `200` with fallback values.
 
@@ -73,7 +75,7 @@ tests/              pytest tests
 
 Split files only for a clear second responsibility.
 
-Use Python's `sqlite3` with a configurable local database path. Create the single `tasks` table idempotently at startup; its private schema needs no migration framework.
+Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#local-development). The application factory accepts explicit settings for test isolation. Create the single `tasks` table idempotently at startup; its private schema needs no migration framework. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time and ID remain unchanged. Sort by creation time descending, then ID descending to break ties.
 
 React keeps form/loading/error state locally and refetches the short list after mutations; no state library. Vite proxies `/api` in development. A multi-stage Docker build copies the built frontend into FastAPI's image: one process, one port, and a persistent data volume.
 
@@ -115,12 +117,14 @@ Keep the browser suite intentionally small; backend tests own validation and edg
 ## Milestones
 
 - [x] **0. Define the project.** Capture the scope, decisions, workflow, and agent guidance. Suggested commit: `docs: define todo app implementation plan`.
-- [ ] **1. Build task persistence and API.** Align project metadata with the declared Python version, add configuration, schemas, SQLite operations, CRUD routes, and pytest coverage. Suggested commit: `feat: add persistent task API`.
+- [x] **1. Build task persistence and API.** Align project metadata with the declared Python version, add configuration, schemas, SQLite operations, CRUD routes, and pytest coverage. Suggested commit: `feat: add persistent task API`.
 - [ ] **2. Build the task UI.** Add the Vite React app and complete the manual task workflow. Suggested commit: `feat: add task management UI`.
 - [ ] **3. Add smart suggestions.** Implement the OpenAI adapter, structured validation, fallback, UI action, and mocked tests. Suggested commit: `feat: suggest task priority and label`.
 - [ ] **4. Package and verify.** Add the production Docker workflow, Playwright smoke coverage, `.env.example`, and final documentation updates. Suggested commit: `chore: package and verify the app`.
 
 Complete milestones in order and keep the application runnable at each boundary.
+
+Docker is unavailable on the current development VM. Continue implementation and verification with the [local workflow](README.md#quick-start); container build, startup, and volume-persistence checks remain pending until Docker is available.
 
 ## Delivery checklist
 

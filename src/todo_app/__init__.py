@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from todo-app!")
+"""Persistent task management and optional AI metadata suggestions."""
