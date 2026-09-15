@@ -1,0 +1,87 @@
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { labels, priorities } from "./api";
+import type { Label, Priority, Task, TaskFields } from "./api";
+
+interface TaskFormProps {
+  task: Task | null;
+  busy: boolean;
+  onSave: (fields: TaskFields) => Promise<void>;
+  onCancel: () => void;
+}
+
+export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps) {
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [priority, setPriority] = useState<Priority>(task?.priority ?? "medium");
+  const [label, setLabel] = useState<Label>(task?.label ?? "other");
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const titleLength = Array.from(title.trim()).length;
+
+  useEffect(() => {
+    if (task) titleInput.current?.focus();
+  }, [task]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    if (titleLength < 1 || titleLength > 200) {
+      setTitleError("Enter a title between 1 and 200 characters.");
+      titleInput.current?.focus();
+      return;
+    }
+    setTitleError(null);
+    await onSave({ title: title.trim(), priority, label });
+  }
+
+  return (
+    <section className="form-panel panel" aria-labelledby="form-heading">
+      <div className="section-heading">
+        <span className="eyebrow">{task ? "MAKE A CHANGE" : "ONE THING AT A TIME"}</span>
+        <h2 id="form-heading">{task ? "Edit task" : "Add a task"}</h2>
+        <p>{task ? "Update the details, then save your changes." : "What would you like to get done?"}</p>
+      </div>
+      <form onSubmit={(event) => void submit(event)} noValidate>
+        <fieldset disabled={busy}>
+          <label htmlFor="task-title">Task title</label>
+          <input
+            ref={titleInput}
+            id="task-title"
+            name="title"
+            type="text"
+            value={title}
+            onChange={(event) => {
+              setTitle(event.target.value);
+              setTitleError(null);
+            }}
+            placeholder="e.g. Book a dentist appointment"
+            required
+            autoComplete="off"
+            aria-invalid={titleError ? true : undefined}
+            aria-describedby={titleError ? "title-help title-error" : "title-help"}
+          />
+          <p id="title-help" className="field-hint">A short title, up to 200 characters.</p>
+          {titleError && <p id="title-error" className="field-error" role="alert">{titleError}</p>}
+          <div className="metadata-fields">
+            <div>
+              <label htmlFor="task-priority">Priority</label>
+              <select id="task-priority" value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
+                {priorities.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="task-label">Label</label>
+              <select id="task-label" value={label} onChange={(event) => setLabel(event.target.value as Label)}>
+                {labels.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button className="button primary" type="submit">{task ? "Save changes" : "Add task"}</button>
+            {task && <button className="button secondary" type="button" onClick={onCancel}>Cancel editing</button>}
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
