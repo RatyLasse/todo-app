@@ -54,3 +54,20 @@ class Task(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class SuggestionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: TaskTitle
+
+
+class TaskMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
+
+    priority: Priority
+    label: Label
+
+
+class TaskSuggestion(TaskMetadata):
+    source: Literal["llm", "fallback"]

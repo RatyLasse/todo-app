@@ -43,6 +43,10 @@ input::placeholder { color: #707c75; font-size: 12px; }
 input[aria-invalid="true"] { border-color: #a13c32; }
 .field-hint { margin-top: 8px; color: var(--muted); font-size: 11px; }
 .field-error { color: #a13c32; font-size: 12px; line-height: 1.5; margin-top: 8px; }
+.suggestion-controls { margin-top: 18px; }
+.suggestion-controls .button { width: 100%; }
+.suggestion-controls .field-hint { line-height: 1.6; }
+.suggestion-notice { margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--green); }
 .metadata-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 25px; }
 .form-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
 .button { border: 1px solid transparent; min-height: 40px; border-radius: 7px; font-size: 12px; font-weight: 600; padding: 9px 13px; transition: background-color .15s; }

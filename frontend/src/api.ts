@@ -4,6 +4,12 @@ export const labels = ["work", "personal", "errands", "finance", "health", "othe
 export type Priority = (typeof priorities)[number];
 export type Label = (typeof labels)[number];
 
+export interface TaskSuggestion {
+  priority: Priority;
+  label: Label;
+  source: "llm" | "fallback";
+}
+
 export interface TaskFields {
   title: string;
   priority: Priority;
@@ -65,6 +71,21 @@ async function request(path: string, options: RequestInit = {}): Promise<unknown
 function parseTask(value: unknown): Task {
   if (!isTask(value)) throw new Error("The server returned an invalid task. Please refresh the list.");
   return value;
+}
+
+export async function suggestMetadata(title: string, signal?: AbortSignal): Promise<TaskSuggestion> {
+  const value = await request("/task-suggestions", {
+    method: "POST", body: JSON.stringify({ title }), signal,
+  });
+  if (
+    typeof value !== "object" || value === null ||
+    !("priority" in value) || !priorities.some((priority) => priority === value.priority) ||
+    !("label" in value) || !labels.some((label) => label === value.label) ||
+    !("source" in value) || (value.source !== "llm" && value.source !== "fallback")
+  ) {
+    throw new Error("The server returned an invalid suggestion.");
+  }
+  return { priority: value.priority as Priority, label: value.label as Label, source: value.source };
 }
 
 export const tasksApi = {

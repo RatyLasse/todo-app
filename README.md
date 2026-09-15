@@ -1,14 +1,14 @@
 # Todo App
 
-A small app for adding, editing, completing, and deleting tasks, with planned AI priority and label suggestions from the task title.
+A small app for adding, editing, completing, and deleting tasks, with optional AI priority and label suggestions from the task title.
 
-The task API and React UI are implemented. AI suggestions and a simpler local demo workflow are upcoming [milestones](PLAN.md#milestones).
+The task API, React UI, and AI suggestions are implemented. A simpler local demo workflow is the remaining implementation [milestone](PLAN.md#milestones).
 
 ## Tech stack
 
 - Backend: Python 3.14, FastAPI, SQLite
 - Frontend: React, TypeScript, Vite
-- LLM (planned): OpenAI Python SDK
+- LLM: OpenRouter via the OpenAI Python SDK with strict structured output (`nex-agi/nex-n2.5-mini:free`)
 - Testing: pytest, Playwright
 - Tooling: uv, Ruff, ty
 
@@ -37,7 +37,34 @@ Open **<http://127.0.0.1:5173>** for the task UI. Add tasks, edit their title/pr
 
 uv uses the Python 3.14 version declared in `.python-version` and downloads it if needed. The backend provides interactive API documentation at <http://127.0.0.1:8000/docs> and a health endpoint at <http://127.0.0.1:8000/api/health>. Port 8000 serves the API; its root `/` does not serve the UI during local development.
 
-The backend needs no API key. Tasks persist in `data/tasks.sqlite3` across server restarts; the directory and table are created at startup.
+The app runs without an API key. Tasks persist in `data/tasks.sqlite3` across server restarts; the directory and table are created at startup.
+
+## AI suggestions
+
+Enter a title and click **Suggest priority and label** to fill the editable fields. A suggestion never saves a task; review or change the values, then click **Add task** or **Save changes**. You can keep editing or save manually while a suggestion is pending. Editing the draft, saving, or leaving it cancels the pending browser request and prevents a late response from overwriting your work.
+
+Without an API key, suggestions return **Medium** priority and **Other** label with an explanation that these are fallback defaults. Provider failures, timeouts, refused or incomplete responses, and invalid output use the same fallback. A browser request failure preserves the current values and offers retry or manual entry.
+
+The default is the free [Nex-AGI Nex-N2.5 Mini model on OpenRouter](https://openrouter.ai/nex-agi/nex-n2.5-mini%3Afree). It supports the [structured output](https://openrouter.ai/docs/guides/features/structured-outputs) required by this small classification task. Free model variants are rate limited; exceeding the provider limit produces fallback suggestions. `openrouter/free` can be used when you prefer automatic routing, but a pinned model gives more predictable behavior.
+
+To enable live suggestions:
+
+1. Sign in to [OpenRouter and create an API key](https://openrouter.ai/settings/keys).
+2. Create or edit `.env` in the repository root using [.env.example](.env.example). Set `OPENROUTER_API_KEY` to that key and keep the default `OPENROUTER_MODEL` (`nex-agi/nex-n2.5-mini:free`). The filename must be exactly `.env`, not `.env.txt`.
+3. Run `uv sync --all-groups` after updating the code, then restart the backend with the [quick-start command](#quick-start).
+4. Enter a title such as `Pay the overdue electricity bill urgently today` and click **Suggest priority and label**. Expect High / Finance and the message **AI suggestion applied**. The fallback message means a live suggestion was not obtained.
+
+Keep the key on the backend; `.env` is ignored by Git. Old `OPENAI_API_KEY`, `OPENAI_MODEL`, `GROQ_API_KEY`, and `GROQ_MODEL` entries are ignored and can be removed. The model ID names the model and its creator; requests go to OpenRouter and require an OpenRouter key. A custom `OPENROUTER_MODEL` must support OpenRouter Chat Completions and structured JSON Schema.
+
+For a manual live check from the project root, run:
+
+```sh
+uv run python scripts/check_ai.py
+```
+
+This explicitly calls OpenRouter for three canned examples through the app's HTTP endpoint using an isolated temporary database. It prints only result metadata and succeeds when all three return the expected values with `source=llm`. It does not require running development servers or modify your task database. This is separate from the automated test suite.
+
+In the UI, only clicking the suggestion button sends the current title to OpenRouter when a key is configured. Task creation and editing do not call the provider. See the [LLM design](PLAN.md#llm-design) for the prompt, validation, timeout, and fallback policy.
 
 ## Local development
 
@@ -50,7 +77,7 @@ $env:TODO_DATABASE_PATH = 'data/development.sqlite3'
 uv run uvicorn todo_app.main:app --reload
 ```
 
-Configuration currently comes from environment variables; `.env` loading will be added with AI configuration. Vite proxies `/api` to the backend. It fails if port 5173 is occupied instead of silently selecting another port. For a backend on a different address, set `TODO_API_PROXY` before starting Vite.
+The backend reads `.env` from its working directory; environment variables take precedence. Explicit settings used by tests bypass both. An empty `OPENROUTER_API_KEY` environment variable forces fallback even if `.env` contains a key. Vite proxies `/api` to the backend. It fails if port 5173 is occupied instead of silently selecting another port. For a backend on a different address, set `TODO_API_PROXY` before starting Vite.
 
 Build the frontend with strict TypeScript checks:
 
@@ -71,7 +98,7 @@ uv run ruff format --check .
 uv run ty check
 ```
 
-Tests use temporary SQLite databases and need no OpenAI API key. They cover task operations, validation, persistence across app instances, timestamps, stable errors, and safe logging. Test warnings are treated as failures. See [contributor checks](AGENTS.md#verification).
+Tests use temporary SQLite databases and isolate configuration from local `.env` files and environment variables. They cover task operations, validation, persistence across app instances, timestamps, stable errors, and safe logging. AI tests inject a provider or exercise the OpenAI SDK against a mocked OpenRouter-compatible HTTP transport; they never call a live provider. Coverage includes structured output, missing keys, provider/transport errors, malformed or refused responses, cancellation at the request deadline, and safe logging. Test warnings are treated as failures. See [contributor checks](AGENTS.md#verification).
 
 Install Chromium once, then run the browser tests:
 
@@ -80,7 +107,7 @@ npm --prefix frontend exec -- playwright install chromium
 npm --prefix frontend run test:e2e
 ```
 
-Playwright starts its own backend and frontend on ports 18000 and 15173 and refuses to reuse existing servers. Its temporary database is separate from your tasks. The suite runs the manual task workflow and failure recovery in desktop and mobile Chromium; no manual server startup is needed. Traces and screenshots for failed tests are saved under `frontend/test-results` and can contain test task text.
+Playwright starts its own backend and frontend on ports 18000 and 15173 and refuses to reuse existing servers. Its temporary database is separate from your tasks. The suite runs the manual task workflow, suggestion review, fallback, failure recovery, and pending-request cancellation in desktop and mobile Chromium. Suggestions use a stubbed browser response or the backend's missing-key fallback; no API key or manual server startup is needed. Traces and screenshots for failed tests are saved under `frontend/test-results` and can contain test task text.
 
 ## Design overview
 
@@ -88,7 +115,7 @@ FastAPI validates requests, delegates persistence to a small SQLite module, and 
 
 React uses a small typed API client and local state. One form supports creation and editing; task rows support completion and deletion. Failed saves preserve the draft. Successful mutations update the displayed task from the API response and refetch the list; a failed refresh keeps the confirmed change visible and offers manual retry.
 
-Optional AI suggestions will use controlled values and deterministic fallback on expected failures; users can edit them before saving. See the [LLM design](PLAN.md#llm-design) for prompt strategy and error handling.
+Optional AI suggestions use controlled values and deterministic fallback on expected failures; users can edit them before saving. See the [LLM design](PLAN.md#llm-design) for prompt strategy and error handling.
 
 ## Local demo (planned)
 

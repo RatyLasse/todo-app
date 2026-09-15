@@ -10,13 +10,27 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from todo_app.config import Settings
 from todo_app.database import Database
-from todo_app.schemas import ErrorResponse, Task, TaskCreate, TaskUpdate
+from todo_app.schemas import (
+    ErrorResponse,
+    SuggestionRequest,
+    Task,
+    TaskCreate,
+    TaskSuggestion,
+    TaskUpdate,
+)
+from todo_app.suggestions import SuggestionProvider, suggest_task
 
 logger = logging.getLogger(__name__)
 type TaskId = Annotated[int, Path(ge=1, le=2**63 - 1)]
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    suggestion_provider: SuggestionProvider | None = None,
+) -> FastAPI:
+    # SDK debug logs include request bodies; keep task text out of application logs.
+    logging.getLogger("openai").setLevel(logging.WARNING)
     configuration = settings if settings is not None else Settings.from_env()
     database = Database(configuration.database_path)
 
@@ -53,6 +67,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post("/api/task-suggestions")
+    async def create_suggestion(suggestion: SuggestionRequest) -> TaskSuggestion:
+        return await suggest_task(suggestion.title, configuration, suggestion_provider)
 
     @app.get("/api/tasks")
     def list_tasks() -> list[Task]:

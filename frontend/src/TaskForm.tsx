@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { labels, priorities } from "./api";
+import { labels, priorities, suggestMetadata } from "./api";
 import type { Label, Priority, Task, TaskFields } from "./api";
 
 interface TaskFormProps {
@@ -15,6 +15,10 @@ export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps
   const [priority, setPriority] = useState<Priority>(task?.priority ?? "medium");
   const [label, setLabel] = useState<Label>(task?.label ?? "other");
   const [titleError, setTitleError] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestionNotice, setSuggestionNotice] = useState("");
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const suggestionController = useRef<AbortController | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
   const titleLength = Array.from(title.trim()).length;
 
@@ -22,15 +26,62 @@ export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps
     if (task) titleInput.current?.focus();
   }, [task]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy) return;
+  useEffect(() => () => suggestionController.current?.abort(), []);
+
+  useEffect(() => {
+    if (busy) clearSuggestion();
+  }, [busy]);
+
+  function clearSuggestion() {
+    suggestionController.current?.abort();
+    suggestionController.current = null;
+    setSuggesting(false);
+    setSuggestionNotice("");
+    setSuggestionError(null);
+  }
+
+  function validateTitle(): boolean {
     if (titleLength < 1 || titleLength > 200) {
       setTitleError("Enter a title between 1 and 200 characters.");
       titleInput.current?.focus();
-      return;
+      return false;
     }
     setTitleError(null);
+    return true;
+  }
+
+  async function requestSuggestion() {
+    if (busy || suggestionController.current || !validateTitle()) return;
+    const controller = new AbortController();
+    suggestionController.current = controller;
+    setSuggesting(true);
+    setSuggestionNotice("");
+    setSuggestionError(null);
+    try {
+      const suggestion = await suggestMetadata(title.trim(), controller.signal);
+      // Editing, saving, or leaving the draft invalidates its pending suggestion.
+      if (controller.signal.aborted) return;
+      setPriority(suggestion.priority);
+      setLabel(suggestion.label);
+      setSuggestionNotice(suggestion.source === "llm"
+        ? "AI suggestion applied. Review or edit it before saving."
+        : "AI is unavailable. Default values applied: Medium priority and Other label. Review or edit them before saving.");
+    } catch {
+      if (!controller.signal.aborted) {
+        setSuggestionError("Could not get a suggestion. Try again or choose priority and label manually.");
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        suggestionController.current = null;
+        setSuggesting(false);
+      }
+    }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || !validateTitle()) return;
+    clearSuggestion();
     await onSave({ title: title.trim(), priority, label });
   }
 
@@ -51,6 +102,7 @@ export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps
             type="text"
             value={title}
             onChange={(event) => {
+              clearSuggestion();
               setTitle(event.target.value);
               setTitleError(null);
             }}
@@ -62,16 +114,26 @@ export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps
           />
           <p id="title-help" className="field-hint">A short title, up to 200 characters.</p>
           {titleError && <p id="title-error" className="field-error" role="alert">{titleError}</p>}
+          <div className="suggestion-controls">
+            <button className="button secondary" type="button" disabled={suggesting} onClick={() => void requestSuggestion()}>
+              {suggesting ? "Suggesting…" : "Suggest priority and label"}
+            </button>
+            <p className="field-hint">Optional AI help. Sends this title to OpenRouter when configured.</p>
+            {(suggesting || suggestionNotice) && <p className="suggestion-notice" role="status">
+              {suggesting ? "Getting a suggestion… You can keep editing or save manually." : suggestionNotice}
+            </p>}
+            {suggestionError && <p className="field-error" role="alert">{suggestionError}</p>}
+          </div>
           <div className="metadata-fields">
             <div>
               <label htmlFor="task-priority">Priority</label>
-              <select id="task-priority" value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
+              <select id="task-priority" value={priority} onChange={(event) => { clearSuggestion(); setPriority(event.target.value as Priority); }}>
                 {priorities.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor="task-label">Label</label>
-              <select id="task-label" value={label} onChange={(event) => setLabel(event.target.value as Label)}>
+              <select id="task-label" value={label} onChange={(event) => { clearSuggestion(); setLabel(event.target.value as Label); }}>
                 {labels.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}
               </select>
             </div>
