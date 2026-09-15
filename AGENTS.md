@@ -38,7 +38,7 @@ Select checks by change:
 - Backend: Ruff, ty, relevant pytest tests; broaden coverage for shared schemas, persistence, configuration, or API changes.
 - Frontend: TypeScript/build and browser tests for affected flows; backend tests if its behavior or API contract changes.
 - Dependencies/packaging: affected install/build, startup smoke test, and tests for runtime behavior at risk.
-- Milestones: relevant checks available at that stage. Final delivery: full quality set and documented local/Docker workflows.
+- Milestones: relevant checks available at that stage. Final delivery: full quality set and documented local development/demo workflows; follow [local delivery verification](PLAN.md#local-delivery-verification).
 
 Save time and tokens: read relevant files, batch independent checks, keep output focused, and reuse unchanged-code results. Repeat or broaden checks only for relevant edits, failures, or new evidence. Avoid unrelated tools and tests for prose. Report checks and material gaps.
 

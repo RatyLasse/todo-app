@@ -8,7 +8,7 @@ The project is done when:
 
 - the product behavior below works with SQLite persistence and OpenAI;
 - the test strategy passes, including AI fallback paths;
-- documented local/Docker workflows work from a clean checkout;
+- documented local development and demo workflows work from a clean checkout;
 - README accurately explains decisions and commands; and
 - the [delivery checklist](#delivery-checklist) is complete.
 
@@ -26,6 +26,8 @@ A task contains:
 - server-generated creation and update timestamps in UTC.
 
 One form and list support creation, title/priority/label editing, completion toggling, and permanent deletion. Defaults: priority `medium`, label `other`.
+
+Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. Loading, saving, empty, success, and error states are visible, and a failed list load offers manual refresh. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
 
 ### Smart suggestion
 
@@ -48,7 +50,7 @@ All HTTP routes use JSON under `/api`, except deletion, which returns no body.
 | `PATCH` | `/api/tasks/{id}` | Change supplied task fields |
 | `DELETE` | `/api/tasks/{id}` | Delete a task and return `204` |
 | `POST` | `/api/task-suggestions` | Suggest priority and label for a title |
-| `GET` | `/api/health` | Support container and demo health checks |
+| `GET` | `/api/health` | Support local startup and demo health checks |
 
 Task responses expose `id`, `title`, `completed`, `priority`, `label`, `created_at`, and `updated_at`. Create accepts `title` plus optional `priority` and `label`, and returns `201`; patch accepts at least one editable task field. Supplied fields cannot be null, unknown fields are rejected, and completion must be a JSON boolean. Task IDs must be positive integers within SQLite's signed 64-bit range. Unknown task IDs return `404`, invalid input returns `422`, and unexpected server errors use a generic `500` response.
 
@@ -77,7 +79,15 @@ Split files only for a clear second responsibility.
 
 Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#local-development). The application factory accepts explicit settings for test isolation. Create the single `tasks` table idempotently at startup; its private schema needs no migration framework. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time and ID remain unchanged. Sort by creation time descending, then ID descending to break ties.
 
-React keeps form/loading/error state locally and refetches the short list after mutations; no state library. Vite proxies `/api` in development. A multi-stage Docker build copies the built frontend into FastAPI's image: one process, one port, and a persistent data volume.
+React keeps form/loading/error state locally; no state library. `App.tsx` coordinates the form and list components, while `api.ts` validates received task shapes and maps failures to stable user messages without displaying raw server details. Mutations first apply the confirmed API result locally, then refetch the short list. This keeps a saved change visible if the follow-up fetch fails. Controls prevent overlapping mutations and requests have a short timeout.
+
+Vite proxies `/api` in development; [local setup and ports](README.md#quick-start) are documented in README.
+
+### Local delivery
+
+Use native Python and Node.js tooling for local development and delivery. Docker is optional in the exercise brief and cannot run on the current development VM, so Docker packaging is outside scope. Verify the native workflow from a clean checkout and rehearse it for the interview.
+
+Milestone 4 will add a convenient demo start command after dependency installation and the frontend build. FastAPI will serve `frontend/dist` alongside `/api`: one process and one port, with SQLite stored at the same configured local database path. Keep the separate Vite and FastAPI servers for development with automatic reload. README will own the exact setup, build, and start commands once implemented.
 
 ## LLM design
 
@@ -108,23 +118,26 @@ Automated tests must never call OpenAI or require an API key; inject or replace 
 
 ### Playwright
 
-- Create, edit, complete, and delete a task through the browser.
+- Create, edit, cancel editing, complete, reopen, and delete a task through the browser, including reload persistence and deletion confirmation.
+- Check form validation and recovery from failed loads, mutations, and refreshes after successful saves.
 - Request a suggestion from a stubbed or deterministic backend, edit it, save the task, and verify the displayed values.
 - Verify fallback messaging.
 
-Keep the browser suite intentionally small; backend tests own validation and edge-case coverage.
+Keep the browser suite intentionally small; backend tests own validation and edge-case coverage. The manual workflow and failure tests run in desktop and mobile Chromium. Playwright starts separate servers with a temporary database, runs one worker with database cleanup before each test, and never reuses development servers. See [test commands and artifacts](README.md#tests). Suggestion and fallback browser coverage will be added with milestone 3.
+
+### Local delivery verification
+
+At milestone 4, run the full [quality checks](AGENTS.md#verification) and verify the documented dependency installation, frontend build, and development/demo start commands from a clean checkout on the development machine. Add Playwright smoke coverage against the built UI served by FastAPI. Check the health endpoint, task operations, and SQLite persistence after restarting the demo server. Rehearse the task and suggestion workflows, including fallback without an API key; any live-provider check is manual and separate from automated tests.
 
 ## Milestones
 
 - [x] **0. Define the project.** Capture the scope, decisions, workflow, and agent guidance. Suggested commit: `docs: define todo app implementation plan`.
 - [x] **1. Build task persistence and API.** Align project metadata with the declared Python version, add configuration, schemas, SQLite operations, CRUD routes, and pytest coverage. Suggested commit: `feat: add persistent task API`.
-- [ ] **2. Build the task UI.** Add the Vite React app and complete the manual task workflow. Suggested commit: `feat: add task management UI`.
+- [x] **2. Build the task UI.** Add the Vite React app and complete the manual task workflow, with Playwright coverage for the affected flows. Suggested commit: `feat: add task management UI`.
 - [ ] **3. Add smart suggestions.** Implement the OpenAI adapter, structured validation, fallback, UI action, and mocked tests. Suggested commit: `feat: suggest task priority and label`.
-- [ ] **4. Package and verify.** Add the production Docker workflow, Playwright smoke coverage, `.env.example`, and final documentation updates. Suggested commit: `chore: package and verify the app`.
+- [ ] **4. Prepare local delivery and verify.** Add the demo start command, FastAPI serving of the built frontend, and Playwright smoke coverage for that workflow. Finalize `.env.example` and README, complete clean-checkout verification, and rehearse the demo as described in [local delivery verification](#local-delivery-verification). Suggested commit: `chore: prepare and verify local delivery`.
 
 Complete milestones in order and keep the application runnable at each boundary.
-
-Docker is unavailable on the current development VM. Continue implementation and verification with the [local workflow](README.md#quick-start); container build, startup, and volume-persistence checks remain pending until Docker is available.
 
 ## Delivery checklist
 
