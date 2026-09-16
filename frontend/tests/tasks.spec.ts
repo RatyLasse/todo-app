@@ -30,7 +30,7 @@ test("create, edit, cancel, complete, reopen, and delete a task", async ({ page 
   await expect(page.getByRole("heading", { name: "A fresh start" })).toBeVisible();
   await page.getByRole("textbox", { name: "Task title" }).fill("  Book dentist appointment  ");
   await page.getByRole("combobox", { name: "Priority" }).selectOption("high");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("health");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("health");
   await page.getByRole("textbox", { name: "Task title" }).press("Enter");
 
   const original = page.getByRole("article", { name: "Book dentist appointment", exact: true });
@@ -48,7 +48,7 @@ test("create, edit, cancel, complete, reopen, and delete a task", async ({ page 
   await original.getByRole("button", { name: "Edit Book dentist appointment", exact: true }).click();
   await page.getByRole("textbox", { name: "Task title" }).fill("Book annual checkup");
   await page.getByRole("combobox", { name: "Priority" }).selectOption("low");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("personal");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("personal");
   await page.getByRole("button", { name: "Save changes" }).click();
 
   const updated = page.getByRole("article", { name: "Book annual checkup", exact: true });
@@ -100,14 +100,49 @@ test("moves completed tasks to the bottom and restores their original place", as
   await expect.poll(taskTitles).toEqual(["Newest task", "Middle task", "Oldest task"]);
 });
 
+test("sorts open tasks by priority and filters by label", async ({ page }) => {
+  await openApp(page);
+  const tasks = [
+    { title: "Low work task", priority: "low", label: "work" },
+    { title: "High personal task", priority: "high", label: "personal" },
+    { title: "Medium work task", priority: "medium", label: "work" },
+  ] as const;
+  for (const task of tasks) {
+    await page.getByRole("textbox", { name: "Task title" }).fill(task.title);
+    await page.getByRole("combobox", { name: "Priority" }).selectOption(task.priority);
+    await page.getByRole("combobox", { name: "Label", exact: true }).selectOption(task.label);
+    await page.getByRole("button", { name: "Add task", exact: true }).click();
+  }
+
+  const taskTitles = (): Promise<string[]> => page.getByRole("list", { name: "Tasks" })
+    .getByRole("heading", { level: 3 }).allTextContents();
+  const sortButton = page.getByRole("button", { name: "Sort by priority" });
+  await expect(sortButton).toHaveAttribute("aria-pressed", "true");
+  await sortButton.hover();
+  await expect(sortButton).toHaveCSS("background-color", "rgb(16, 71, 54)");
+  await expect(sortButton).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect.poll(taskTitles).toEqual(["High personal task", "Medium work task", "Low work task"]);
+
+  const highPriorityTask = page.getByRole("article", { name: "High personal task", exact: true });
+  await highPriorityTask.getByRole("checkbox").click();
+  await expect.poll(taskTitles).toEqual(["Medium work task", "Low work task", "High personal task"]);
+
+  await sortButton.click();
+  await expect(sortButton).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(taskTitles).toEqual(["Medium work task", "Low work task", "High personal task"]);
+
+  await page.getByRole("combobox", { name: "Filter by label" }).selectOption("work");
+  await expect.poll(taskTitles).toEqual(["Medium work task", "Low work task"]);
+});
+
 test("validate the title without losing form values", async ({ page }) => {
   await openApp(page);
   await page.getByRole("textbox", { name: "Task title" }).fill("   ");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("work");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("work");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText("Enter a title between 1 and 200 characters.");
   await expect(page.getByRole("textbox", { name: "Task title" })).toBeFocused();
-  await expect(page.getByRole("combobox", { name: "Label" })).toHaveValue("work");
+  await expect(page.getByRole("combobox", { name: "Label", exact: true })).toHaveValue("work");
 
   // JavaScript string length counts UTF-16 units; the API counts Unicode characters.
   const title = "📝".repeat(200);
@@ -132,13 +167,13 @@ test("keep the draft and hide server details when saving fails", async ({ page }
     : route.continue());
   await page.getByRole("textbox", { name: "Task title" }).fill("Pay invoice");
   await page.getByRole("combobox", { name: "Priority" }).selectOption("high");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("finance");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("finance");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText("The server could not complete the request. Please try again.");
   await expect(page.getByText("sensitive-provider-details")).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "Task title" })).toHaveValue("Pay invoice");
   await expect(page.getByRole("combobox", { name: "Priority" })).toHaveValue("high");
-  await expect(page.getByRole("combobox", { name: "Label" })).toHaveValue("finance");
+  await expect(page.getByRole("combobox", { name: "Label", exact: true })).toHaveValue("finance");
 
   await page.unroute("**/api/tasks");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
@@ -194,11 +229,11 @@ test("review and edit an AI suggestion before saving", async ({ page, request })
   await page.getByRole("button", { name: "Suggest priority and label" }).click();
   await expect(page.getByRole("status").filter({ hasText: "AI suggestion applied" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Priority" })).toHaveValue("high");
-  await expect(page.getByRole("combobox", { name: "Label" })).toHaveValue("finance");
+  await expect(page.getByRole("combobox", { name: "Label", exact: true })).toHaveValue("finance");
   expect(await (await request.get("/api/tasks")).json()).toEqual([]);
 
   await page.getByRole("combobox", { name: "Priority" }).selectOption("low");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("work");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("work");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   const task = page.getByRole("article", { name: "Pay invoice today", exact: true });
   await expect(task.getByText("low priority", { exact: true })).toBeVisible();
@@ -212,12 +247,12 @@ test("missing-key fallback is explained and can be edited and saved", async ({ p
   await openApp(page);
   await page.getByRole("textbox", { name: "Task title" }).fill("Schedule a checkup");
   await page.getByRole("combobox", { name: "Priority" }).selectOption("high");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("health");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("health");
   await page.getByRole("button", { name: "Suggest priority and label" }).click();
   await expect(page.getByRole("status").filter({ hasText: "AI is unavailable" })).toContainText("Default values applied");
   await expect(page.getByRole("combobox", { name: "Priority" })).toHaveValue("medium");
-  await expect(page.getByRole("combobox", { name: "Label" })).toHaveValue("other");
-  await page.getByRole("combobox", { name: "Label" }).selectOption("health");
+  await expect(page.getByRole("combobox", { name: "Label", exact: true })).toHaveValue("other");
+  await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("health");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   await expect(page.getByRole("article", { name: "Schedule a checkup", exact: true }).getByText("health", { exact: true })).toBeVisible();
 });
@@ -230,12 +265,12 @@ for (const failure of ["server error", "invalid response"] as const) {
       : { json: { priority: "urgent", label: "private-label", source: "llm" } }));
     await page.getByRole("textbox", { name: "Task title" }).fill("Prepare report");
     await page.getByRole("combobox", { name: "Priority" }).selectOption("high");
-    await page.getByRole("combobox", { name: "Label" }).selectOption("work");
+    await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("work");
     await page.getByRole("button", { name: "Suggest priority and label" }).click();
     await expect(page.getByRole("alert")).toHaveText("Could not get a suggestion. Try again or choose priority and label manually.");
     await expect(page.getByRole("textbox", { name: "Task title" })).toHaveValue("Prepare report");
     await expect(page.getByRole("combobox", { name: "Priority" })).toHaveValue("high");
-    await expect(page.getByRole("combobox", { name: "Label" })).toHaveValue("work");
+    await expect(page.getByRole("combobox", { name: "Label", exact: true })).toHaveValue("work");
     await expect(page.getByText("sensitive-provider-details")).toHaveCount(0);
     await page.unroute("**/api/task-suggestions");
     await page.getByRole("button", { name: "Suggest priority and label" }).click();
@@ -297,7 +332,7 @@ for (const action of ["edit title", "edit metadata", "save", "cancel editing"] a
     await page.unrouteAll({ behavior: "wait" });
     await expect(page.getByRole("button", { name: "Suggest priority and label" })).toBeEnabled();
     await expect(page.getByRole("combobox", { name: "Priority" })).toHaveValue(action === "edit metadata" ? "low" : "medium");
-    await expect(page.getByRole("combobox", { name: "Label" })).toHaveValue("other");
+    await expect(page.getByRole("combobox", { name: "Label", exact: true })).toHaveValue("other");
     await expect(page.getByText("AI suggestion applied", { exact: false })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   });

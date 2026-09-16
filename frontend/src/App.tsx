@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { tasksApi } from "./api";
-import type { Task, TaskFields } from "./api";
+import { labels, tasksApi } from "./api";
+import type { Label, Task, TaskFields } from "./api";
 import TaskForm from "./TaskForm";
 import TaskList from "./TaskList";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 }
+
+type LabelFilter = "all" | Label;
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -17,7 +19,12 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formVersion, setFormVersion] = useState(0);
-  const openCount = tasks.filter((task) => !task.completed).length;
+  const [sortByPriority, setSortByPriority] = useState(true);
+  const [labelFilter, setLabelFilter] = useState<LabelFilter>("all");
+  const visibleTasks = labelFilter === "all"
+    ? tasks
+    : tasks.filter((task) => task.label === labelFilter);
+  const openCount = visibleTasks.filter((task) => !task.completed).length;
 
   async function loadTasks(signal?: AbortSignal) {
     setLoading(true);
@@ -107,23 +114,45 @@ export default function App() {
             <div className="list-heading">
               <div>
                 <h2 id="list-heading">Your tasks</h2>
-                <p>{tasks.length > 0 ? `${openCount} open · ${tasks.length - openCount} done` : "A place for everything on your mind."}</p>
+                <p>{tasks.length > 0 ? `${openCount} open · ${visibleTasks.length - openCount} done` : "A place for everything on your mind."}</p>
+              </div>
+              <div className="list-controls">
+                <button
+                  className={`button secondary sort-button${sortByPriority ? " active" : ""}`}
+                  type="button"
+                  aria-pressed={sortByPriority}
+                  onClick={() => setSortByPriority((enabled) => !enabled)}
+                >
+                  Sort by priority
+                </button>
+                <label className="filter-control" htmlFor="label-filter">
+                  <span>Filter by label</span>
+                  <select
+                    id="label-filter"
+                    value={labelFilter}
+                    onChange={(event) => setLabelFilter(event.target.value as LabelFilter)}
+                  >
+                    <option value="all">All labels</option>
+                    {labels.map((label) => <option key={label} value={label}>{label[0]?.toUpperCase()}{label.slice(1)}</option>)}
+                  </select>
+                </label>
               </div>
             </div>
             {listError && <div className="error-message list-error" role="alert">{listError}</div>}
             {loading && <p className="loading-message" role="status">Loading tasks…</p>}
-            {tasks.length > 0 && <TaskList
-              tasks={tasks}
+            {visibleTasks.length > 0 && <TaskList
+              tasks={visibleTasks}
+              sortByPriority={sortByPriority}
               busy={busy || loading}
               editingId={editingTask?.id}
               onEdit={(task) => { setEditingTask(task); setMutationError(null); setNotice(""); }}
               onToggle={toggleTask}
               onDelete={deleteTask}
             />}
-            {!loading && !listError && tasks.length === 0 && <div className="empty-state">
+            {!loading && !listError && visibleTasks.length === 0 && <div className="empty-state">
               <span className="empty-icon" aria-hidden="true">✓</span>
-              <h3>A fresh start</h3>
-              <p>No tasks yet. Add your first task to get started.</p>
+              <h3>{tasks.length === 0 ? "A fresh start" : "No matching tasks"}</h3>
+              <p>{tasks.length === 0 ? "No tasks yet. Add your first task to get started." : "Choose All labels or another label to see more tasks."}</p>
             </div>}
           </section>
         </div>
