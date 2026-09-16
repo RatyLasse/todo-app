@@ -9,10 +9,26 @@ interface TaskListProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
+function orderTasks(tasks: Task[]): Task[] {
+  const originalPositions = new Map(tasks.map((task, index) => [task.id, index]));
+  const positionOf = (task: Task): number => originalPositions.get(task.id) ?? 0;
+
+  return [...tasks].sort((first, second) => {
+    if (first.completed !== second.completed) return first.completed ? 1 : -1;
+    if (first.completed) {
+      const completionOrder = second.updated_at.localeCompare(first.updated_at);
+      if (completionOrder !== 0) return completionOrder;
+    }
+    return positionOf(first) - positionOf(second);
+  });
+}
+
 export default function TaskList({ tasks, busy, editingId, onEdit, onToggle, onDelete }: TaskListProps) {
+  const orderedTasks = orderTasks(tasks);
+
   return (
     <ul className="task-list" aria-label="Tasks">
-      {tasks.map((task) => (
+      {orderedTasks.map((task) => (
         <li key={task.id}>
           <article className={`task-row${task.completed ? " completed" : ""}${editingId === task.id ? " editing" : ""}`} aria-labelledby={`task-${task.id}`}>
             <input

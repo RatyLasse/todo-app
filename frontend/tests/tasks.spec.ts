@@ -75,6 +75,31 @@ test("create, edit, cancel, complete, reopen, and delete a task", async ({ page 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
 
+test("moves completed tasks to the bottom and restores their original place", async ({ page }) => {
+  await openApp(page);
+  const titles = ["Oldest task", "Middle task", "Newest task"];
+  for (const title of titles) {
+    await page.getByRole("textbox", { name: "Task title" }).fill(title);
+    await page.getByRole("button", { name: "Add task", exact: true }).click();
+    await expect(page.getByRole("article", { name: title, exact: true })).toBeVisible();
+  }
+
+  const taskTitles = (): Promise<string[]> => page.getByRole("list", { name: "Tasks" })
+    .getByRole("heading", { level: 3 }).allTextContents();
+  await expect.poll(taskTitles).toEqual(["Newest task", "Middle task", "Oldest task"]);
+
+  const oldest = page.getByRole("article", { name: "Oldest task", exact: true });
+  await oldest.getByRole("checkbox").click();
+  await expect.poll(taskTitles).toEqual(["Newest task", "Middle task", "Oldest task"]);
+
+  const newest = page.getByRole("article", { name: "Newest task", exact: true });
+  await newest.getByRole("checkbox").click();
+  await expect.poll(taskTitles).toEqual(["Middle task", "Newest task", "Oldest task"]);
+
+  await newest.getByRole("checkbox").click();
+  await expect.poll(taskTitles).toEqual(["Newest task", "Middle task", "Oldest task"]);
+});
+
 test("validate the title without losing form values", async ({ page }) => {
   await openApp(page);
   await page.getByRole("textbox", { name: "Task title" }).fill("   ");
