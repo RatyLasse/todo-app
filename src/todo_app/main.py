@@ -1,11 +1,13 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path as FilePath
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 
 from todo_app.config import Settings
@@ -28,6 +30,7 @@ def create_app(
     settings: Settings | None = None,
     *,
     suggestion_provider: SuggestionProvider | None = None,
+    frontend_directory: FilePath | None = None,
 ) -> FastAPI:
     # SDK debug logs include request bodies; keep task text out of application logs.
     logging.getLogger("openai").setLevel(logging.WARNING)
@@ -96,6 +99,9 @@ def create_app(
         if not database.delete_task(task_id):
             raise HTTPException(status_code=404, detail="Task not found")
         return Response(status_code=204)
+
+    if frontend_directory is not None:
+        app.mount("/", StaticFiles(directory=frontend_directory, html=True), name="ui")
 
     return app
 

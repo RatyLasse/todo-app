@@ -65,6 +65,7 @@ Use the stack declared in [README.md](README.md) as a small monorepo:
 ```text
 src/todo_app/
   main.py          FastAPI construction and routes
+  demo.py          local demo command and build preflight
   config.py        environment-backed settings
   database.py      SQLite schema and task operations
   schemas.py       API and LLM validation models
@@ -88,7 +89,7 @@ Vite proxies `/api` in development; [local setup and ports](README.md#quick-star
 
 Use native Python and Node.js tooling for local development and delivery. Docker is optional in the exercise brief and cannot run on the current development VM, so Docker packaging is outside scope. Verify the native workflow from a clean checkout and rehearse it for the interview.
 
-Milestone 4 will add a convenient demo start command after dependency installation and the frontend build. FastAPI will serve `frontend/dist` alongside `/api`: one process and one port, with SQLite stored at the same configured local database path. Keep the separate Vite and FastAPI servers for development with automatic reload. README will own the exact setup, build, and start commands once implemented.
+The `todo-demo` command checks for `frontend/dist/index.html` and starts FastAPI on loopback with the built UI alongside `/api`: one process and one port, with SQLite stored at the same configured local database path. The application factory accepts an optional frontend directory; only the demo opts into static serving. Mount static files after API routes, serve the index at `/`, and return `404` for unknown paths and missing assets. No client-side routing fallback is needed for this single-page UI. The build stays in the local checkout rather than the Python wheel. Keep the separate Vite and FastAPI servers for development with automatic reload. README owns the exact [setup, build, and start commands](README.md#local-demo).
 
 ## LLM design
 
@@ -131,7 +132,9 @@ Keep the browser suite focused on user flows; backend tests own validation and p
 
 ### Local delivery verification
 
-At milestone 4, run the full [quality checks](AGENTS.md#verification) and verify the documented dependency installation, frontend build, and development/demo start commands from a clean checkout on the development machine. Add Playwright smoke coverage against the built UI served by FastAPI. Check the health endpoint, task operations, and SQLite persistence after restarting the demo server. Rehearse the task and suggestion workflows, including fallback without an API key; any live-provider check is manual and separate from automated tests.
+Run the full [quality checks](AGENTS.md#verification) and verify the documented dependency installation, frontend build, and development/demo start commands from a clean checkout on the development machine. The [demo browser smoke suite](README.md#tests) reuses the task, suggestion-review, and fallback flows against the built UI served by FastAPI through the demo entry point, with an isolated database and no provider calls. Check the health endpoint, task operations, and SQLite persistence after restarting the demo server. Rehearse the task and suggestion workflows, including fallback without an API key; any live-provider check is manual and separate from automated tests.
+
+Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable Node.js 24.21.0 (npm 11.19.0): 123 pytest tests, 30 development browser tests, six demo browser tests, Ruff lint/format, ty, and the TypeScript/Vite build passed. A fresh local clone with the pending milestone files applied, without copied dependencies, build output, `.env`, or task data, passed dependency installation and the build. The documented default demo and development commands served the UI and health endpoint; the development API proxy worked. Demo task creation, editing, completion, fallback, deletion, and SQLite persistence across a process restart passed. Browser flows rehearsed editable suggestions and fallback on desktop and mobile. Live OpenRouter behavior was not rechecked for this delivery-only milestone.
 
 ## Milestones
 
@@ -139,7 +142,7 @@ At milestone 4, run the full [quality checks](AGENTS.md#verification) and verify
 - [x] **1. Build task persistence and API.** Align project metadata with the declared Python version, add configuration, schemas, SQLite operations, CRUD routes, and pytest coverage. Suggested commit: `feat: add persistent task API`.
 - [x] **2. Build the task UI.** Add the Vite React app and complete the manual task workflow, with Playwright coverage for the affected flows. Suggested commit: `feat: add task management UI`.
 - [x] **3. Add smart suggestions.** Implement the OpenRouter adapter, structured validation, fallback, UI action, `.env` configuration, mocked tests, and a manual live check. Suggested commit: `feat: suggest task priority and label`.
-- [ ] **4. Prepare local delivery and verify.** Add the demo start command, FastAPI serving of the built frontend, and Playwright smoke coverage for that workflow. Finalize `.env.example` and README, complete clean-checkout verification, and rehearse the demo as described in [local delivery verification](#local-delivery-verification). Suggested commit: `chore: prepare and verify local delivery`.
+- [x] **4. Prepare local delivery and verify.** Add the demo start command, FastAPI serving of the built frontend, and Playwright smoke coverage for that workflow. Finalize `.env.example` and README, complete clean-checkout verification, and rehearse the demo as described in [local delivery verification](#local-delivery-verification). Suggested commit: `chore: prepare and verify local delivery`.
 
 Complete milestones in order and keep the application runnable at each boundary.
 

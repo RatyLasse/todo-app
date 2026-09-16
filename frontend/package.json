@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:demo": "npm run build && playwright test --config playwright.demo.config.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

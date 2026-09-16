@@ -2,7 +2,7 @@
 
 A small app for adding, editing, completing, and deleting tasks, with optional AI priority and label suggestions from the task title.
 
-The task API, React UI, and AI suggestions are implemented. A simpler local demo workflow is the remaining implementation [milestone](PLAN.md#milestones).
+The task API, React UI, AI suggestions, and [single-process local demo](#local-demo) are implemented.
 
 ## Tech stack
 
@@ -85,7 +85,7 @@ Build the frontend with strict TypeScript checks:
 npm --prefix frontend run build
 ```
 
-The generated files are written to `frontend/dist`. Serving that build from FastAPI is planned for the [local demo workflow](#local-demo-planned).
+The generated files are written to `frontend/dist`. The [local demo](#local-demo) serves that build from FastAPI; rebuild after changing the frontend.
 
 ## Tests
 
@@ -109,6 +109,14 @@ npm --prefix frontend run test:e2e
 
 Playwright starts its own backend and frontend on ports 18000 and 15173 and refuses to reuse existing servers. Its temporary database is separate from your tasks. The suite runs the manual task workflow, suggestion review, fallback, failure recovery, and pending-request cancellation in desktop and mobile Chromium. Suggestions use a stubbed browser response or the backend's missing-key fallback; no API key or manual server startup is needed. Traces and screenshots for failed tests are saved under `frontend/test-results` and can contain test task text.
 
+To build the UI and smoke-test the single-process demo in desktop and mobile Chromium:
+
+```sh
+npm --prefix frontend run test:demo
+```
+
+This runs the task workflow, editable suggestion review, and missing-key fallback against FastAPI on port 18001 using the demo entry point, a temporary database, and an explicitly empty API key. It refuses to reuse an existing server.
+
 ## Design overview
 
 FastAPI validates requests, delegates persistence to a small SQLite module, and returns typed JSON responses. Each database operation owns and closes its connection and transaction. The API contract and architecture are defined in [PLAN.md](PLAN.md#interfaces).
@@ -117,6 +125,19 @@ React uses a small typed API client and local state. One form supports creation 
 
 Optional AI suggestions use controlled values and deterministic fallback on expected failures; users can edit them before saving. See the [LLM design](PLAN.md#llm-design) for prompt strategy and error handling.
 
-## Local demo (planned)
+## Local demo
 
-Milestone 4 will add a convenient local start command after dependency installation and the frontend build. FastAPI will serve the built UI and API from one process and port. Until then, use the two-terminal [quick start](#quick-start). See the [local delivery plan](PLAN.md#local-delivery) for the approach and why Docker is outside scope.
+From a fresh checkout, install uv and Node.js as described in [quick start](#quick-start), then run these commands from the repository root:
+
+```sh
+uv sync --all-groups
+npm --prefix frontend ci
+npm --prefix frontend run build
+uv run todo-demo
+```
+
+Open **<http://127.0.0.1:8000>**. FastAPI serves the built UI, `/api`, and `/docs` in one process on the loopback interface. Subsequent starts need only `uv run todo-demo`; stop it with Ctrl+C. Use `uv run todo-demo --port 8001` if port 8000 is occupied. A missing build produces setup instructions and exits.
+
+The demo uses the same `.env` and `TODO_DATABASE_PATH` configuration as [local development](#local-development), so tasks persist across restarts. Only files under `frontend/dist` are served as static content; configuration and SQLite files remain outside that directory. The build is a local checkout artifact, not bundled into a Python wheel. Keep the two-terminal development workflow for automatic reload. See the [local delivery plan](PLAN.md#local-delivery) for why Docker is outside scope.
+
+For an interview rehearsal, add a task, edit it, mark it complete, reload, restart the server to confirm persistence, and delete it after confirmation. Request a suggestion, review or change the fields, and save explicitly. With no API key, the same flow shows editable fallback defaults. The separate [manual AI check](#ai-suggestions) verifies live provider behavior when a key is available.
