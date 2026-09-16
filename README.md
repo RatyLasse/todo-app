@@ -1,6 +1,6 @@
 # Todo App
 
-A small task manager for adding, editing, completing, and deleting tasks, with optional AI suggestions for priority and label. Core task management works without an API key or an available provider.
+A small task manager for adding, editing, completing, and deleting tasks, with optional AI suggestions for priority and label. The latest successful edit or deletion can be reversed with Undo. Core task management works without an API key or an available provider.
 
 Built with FastAPI and SQLite, React and TypeScript, Vite, OpenRouter via the OpenAI Python SDK, pytest, Playwright, uv, Ruff, and ty.
 
@@ -90,6 +90,6 @@ This suite runs the task workflow, editable suggestion review, and missing-key f
 
 ## Design notes
 
-FastAPI validates JSON at the API boundary and delegates task persistence to SQLite. The React client keeps form state locally, preserves drafts after failed saves, and applies confirmed server responses before refreshing the list.
+FastAPI validates JSON at the API boundary and delegates task persistence to SQLite. The React client keeps form state locally, preserves drafts after failed saves, and applies confirmed server responses before refreshing the list. After an edit or deletion, it keeps a one-shot inverse action available through the Undo button; restoring a deletion creates a new task with the same editable details and completion state.
 
 The AI adapter sends the title as untrusted text to OpenRouter with a fixed classification prompt and a strict JSON Schema. It validates the response locally, assigns the `source` field on the server, disables provider retries, and falls back to deterministic defaults for expected provider failures. Detailed contracts, architecture, and test strategy are in [PLAN.md](PLAN.md).

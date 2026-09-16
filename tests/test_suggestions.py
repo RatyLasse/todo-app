@@ -144,7 +144,7 @@ def test_sdk_structured_output_request_and_safe_logging(
     request = requests[0]
     assert str(request.url) == "https://openrouter.ai/api/v1/chat/completions"
     assert request.headers["authorization"] == f"Bearer {PRIVATE_KEY}"
-    assert set(request.extensions["timeout"].values()) == {8.0}
+    assert set(request.extensions["timeout"].values()) == {10.0}
     body = json.loads(request.content)
     assert body["model"] == "chosen-model"
     assert len(body["messages"]) == 2

@@ -338,6 +338,59 @@ def test_delete_task(client: TestClient) -> None:
     assert client.delete(f"/api/tasks/{task['id']}").status_code == 404
 
 
+def test_restore_task(client: TestClient) -> None:
+    deleted = client.post(
+        "/api/tasks", json={"title": "Restore me", "priority": "high", "label": "work"}
+    ).json()
+    client.patch(f"/api/tasks/{deleted['id']}", json={"completed": True})
+    assert client.delete(f"/api/tasks/{deleted['id']}").status_code == 204
+
+    response = client.post(
+        "/api/tasks/restore",
+        json={
+            "title": deleted["title"],
+            "completed": True,
+            "priority": deleted["priority"],
+            "label": deleted["label"],
+        },
+    )
+
+    assert response.status_code == 201
+    restored = response.json()
+    assert restored["id"] != deleted["id"]
+    assert restored["title"] == deleted["title"]
+    assert restored["completed"] is True
+    assert restored["priority"] == deleted["priority"]
+    assert restored["label"] == deleted["label"]
+    assert client.get("/api/tasks").json() == [restored]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"title": "Task", "completed": True, "priority": "urgent", "label": "other"},
+        {"title": "Task", "completed": "false", "priority": "medium", "label": "other"},
+        {
+            "title": "Task",
+            "completed": True,
+            "priority": "medium",
+            "label": "other",
+            "id": 4,
+        },
+        {"title": "Task", "completed": None, "priority": "medium", "label": "other"},
+    ],
+)
+def test_invalid_restore_does_not_create_a_task(
+    client: TestClient, payload: dict[str, object]
+) -> None:
+    response = client.post("/api/tasks/restore", json=payload)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid request"}
+    assert client.get("/api/tasks").json() == []
+
+
 @pytest.mark.parametrize("method", ["PATCH", "DELETE"])
 def test_unknown_task(client: TestClient, method: str) -> None:
     response = client.request(

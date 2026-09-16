@@ -18,6 +18,7 @@ from todo_app.schemas import (
     Task,
     TaskCreate,
     TaskReorder,
+    TaskRestore,
     TaskSuggestion,
     TaskUpdate,
 )
@@ -83,6 +84,10 @@ def create_app(
     @app.post("/api/tasks", status_code=201)
     def create_task(task: TaskCreate) -> Task:
         return database.create_task(task)
+
+    @app.post("/api/tasks/restore", status_code=201)
+    def restore_task(task: TaskRestore) -> Task:
+        return database.restore_task(task)
 
     @app.post(
         "/api/tasks/reorder",

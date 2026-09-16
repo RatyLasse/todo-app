@@ -4,7 +4,7 @@ from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from todo_app.schemas import Task, TaskCreate, TaskUpdate
+from todo_app.schemas import Task, TaskCreate, TaskRestore, TaskUpdate
 
 
 class Database:
@@ -111,6 +111,42 @@ class Database:
                 VALUES (?, 0, ?, ?, ?, ?, ?, 0) RETURNING *
                 """,
                 (task.title, task.priority, task.label, timestamp, timestamp, position),
+            ).fetchone()
+            return Task.model_validate(dict(row))
+
+    def restore_task(self, task: TaskRestore) -> Task:
+        timestamp = datetime.now(UTC).isoformat()
+        with self.connection() as connection:
+            if task.completed:
+                position = 0
+                completed_position = connection.execute(
+                    "SELECT COALESCE(MAX(completed_position), 0) + 1 "
+                    "FROM tasks WHERE completed = 1"
+                ).fetchone()[0]
+            else:
+                position = connection.execute(
+                    "SELECT COALESCE(MAX(position), 0) + 1 "
+                    "FROM tasks WHERE completed = 0"
+                ).fetchone()[0]
+                completed_position = 0
+            row = connection.execute(
+                """
+                INSERT INTO tasks (
+                    title, completed, priority, label, created_at, updated_at, position,
+                    completed_position
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *
+                """,
+                (
+                    task.title,
+                    task.completed,
+                    task.priority,
+                    task.label,
+                    timestamp,
+                    timestamp,
+                    position,
+                    completed_position,
+                ),
             ).fetchone()
             return Task.model_validate(dict(row))
 

@@ -104,6 +104,18 @@ export const tasksApi = {
     return parseTask(await request("/tasks", { method: "POST", body: JSON.stringify(fields) }));
   },
 
+  async restore(task: Task): Promise<Task> {
+    return parseTask(await request("/tasks/restore", {
+      method: "POST",
+      body: JSON.stringify({
+        title: task.title,
+        completed: task.completed,
+        priority: task.priority,
+        label: task.label,
+      }),
+    }));
+  },
+
   async update(id: number, fields: Partial<TaskFields & { completed: boolean }>): Promise<Task> {
     return parseTask(await request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(fields) }));
   },

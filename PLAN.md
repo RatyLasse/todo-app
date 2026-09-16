@@ -27,7 +27,7 @@ A task contains:
 
 One form and list support creation, title/priority/label editing, completion toggling, and permanent deletion. Defaults: priority `medium`, label `other`.
 
-Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. Open tasks stay above completed tasks; priority sorting is enabled by default for open tasks, and disabling it shows their persisted manual order. Open and completed tasks can be rearranged by pointer drag-and-drop or keyboard movement within their own group, including while a label filter is active; dropping or moving a task disables priority sorting. Completed tasks move to the bottom with the most recently completed first by default; reopening a task returns it to its manual open-task position. Label filtering is inactive by default. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
+Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. After a successful edit or deletion, a one-shot Undo button reverses that latest change; a deletion restore keeps the title, metadata, and completion state, but receives a new server-generated ID. Starting another edit or making a later successful task mutation clears or replaces the available undo action. Open tasks stay above completed tasks; priority sorting is enabled by default for open tasks, and disabling it shows their persisted manual order. Open and completed tasks can be rearranged by pointer drag-and-drop or keyboard movement within their own group, including while a label filter is active; dropping or moving a task disables priority sorting. Completed tasks move to the bottom with the most recently completed first by default; reopening a task returns it to its manual open-task position. Label filtering is inactive by default. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
 
 ### Smart suggestion
 
@@ -47,6 +47,7 @@ API routes use JSON under `/api`, except deletion, which returns no body. In API
 | --- | --- | --- |
 | `GET` | `/api/tasks` | List tasks in manual group order, with newest-first defaults |
 | `POST` | `/api/tasks` | Create a task |
+| `POST` | `/api/tasks/restore` | Restore a deleted task snapshot |
 | `POST` | `/api/tasks/reorder` | Persist the order of all tasks within their completion groups |
 | `PATCH` | `/api/tasks/{id}` | Change supplied task fields |
 | `DELETE` | `/api/tasks/{id}` | Delete a task and return `204` |
@@ -82,7 +83,7 @@ Split files only for a clear second responsibility.
 
 Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#develop-with-live-reload). The application factory accepts explicit settings for test isolation. Importing it does not construct an app or read local settings; Uvicorn calls it using `--factory`, and the demo calls it directly. Create the single `tasks` table idempotently at startup; add the manual position columns to existing databases in the same startup check. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time, ID, and manual positions remain unchanged. New tasks start at the top of the open-task order, and newly completed tasks start at the top of the completed-task order. Reordering validates and updates both completion-group positions atomically. List tasks by manual open-task position, completed status, manual completed-task position, completion timestamp, and ID; a migrated database initially follows creation time descending for open tasks and completion time descending for completed tasks.
 
-React keeps form/loading/error state locally; no state library. `App.tsx` coordinates the form and list components, while `api.ts` validates received task shapes and maps failures to stable user messages without displaying raw server details. Mutations first apply the confirmed API result locally, then refetch the short list. This keeps a saved change visible if the follow-up fetch fails. Controls prevent overlapping mutations and requests have a short timeout.
+React keeps form/loading/error state locally; no state library. `App.tsx` coordinates the form and list components, while `api.ts` validates received task shapes and maps failures to stable user messages without displaying raw server details. Mutations first apply the confirmed API result locally, then refetch the short list. This keeps a saved change visible if the follow-up fetch fails. The app holds only the latest confirmed edit or deletion inverse; edit undo uses `PATCH`, while deletion undo uses the atomic restore route. Controls prevent overlapping mutations and requests have a short timeout.
 
 Vite proxies `/api` in development; [local setup and ports](README.md#develop-with-live-reload) are documented in README.
 
@@ -105,7 +106,7 @@ Use the OpenAI Python SDK's asynchronous Chat Completions API pointed at OpenRou
 
 Pass the title as user content; give the model no tools or database contents. Request a small reasoning budget and cap completion tokens at 256. Validate the provider response envelope and metadata locally; reject unknown metadata fields or values. Only one completion with finish reason `stop` and valid metadata counts as an LLM suggestion. The `source` field is assigned by the backend, never the model.
 
-Use an eight-second overall deadline and SDK timeout, with SDK retries disabled and no application-level retry. Missing key, timeout, rate/provider error, invalid output, refusal, or incomplete response returns `medium` / `other` with `source: fallback`. The browser's ten-second timeout allows time for the backend fallback. Canceling in the browser discards the result; it does not guarantee cancellation of a provider request already in flight.
+Use a ten-second overall deadline and SDK timeout, with SDK retries disabled and no application-level retry. Missing key, timeout, rate/provider error, invalid output, refusal, or incomplete response returns `medium` / `other` with `source: fallback`. The browser's ten-second timeout allows time for the backend fallback. Canceling in the browser discards the result; it does not guarantee cancellation of a provider request already in flight.
 
 Log only safe failure categories. The app sets OpenAI SDK logging to warning level because its debug output includes request bodies. Settings omit the API key from their representation. Do not convert programming errors into fallbacks: the existing generic `500` handler handles them without logging sensitive exception details.
 
@@ -125,6 +126,7 @@ Automated tests must never call a live provider or require an API key; inject or
 ### Playwright
 
 - Create, edit, cancel editing, complete, reopen, and delete a task through the browser, including reload persistence and deletion confirmation.
+- Verify Undo reverses the latest successful edit and deletion, restores deleted metadata and completion state, is one-shot, and is replaced by a later successful mutation.
 - Check form validation and recovery from failed loads, mutations, and refreshes after successful saves.
 - Request a suggestion from a stubbed or deterministic backend, edit it, save the task, and verify the displayed values.
 - Verify fallback messaging.
@@ -137,7 +139,7 @@ Keep the browser suite focused on user flows; backend tests own validation and p
 
 Run the full [quality checks](AGENTS.md#verification) and verify the documented dependency installation, frontend build, and development/demo start commands from a clean checkout on the development machine. The [demo browser smoke suite](README.md#tests) reuses the task, suggestion-review, and fallback flows against the built UI served by FastAPI through the demo entry point, with an isolated database and no provider calls. Check the health endpoint, task operations, and SQLite persistence after restarting the demo server. Rehearse the task and suggestion workflows, including fallback without an API key; any live-provider check is manual and separate from automated tests.
 
-Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable Node.js 24.21.0 (npm 11.19.0): 123 pytest tests, 30 development browser tests, six demo browser tests, Ruff lint/format, ty, and the TypeScript/Vite build passed. A fresh local clone with the pending milestone files applied, without copied dependencies, build output, `.env`, or task data, passed dependency installation and the build. The documented default demo and development commands served the UI and health endpoint; the development API proxy worked. Demo task creation, editing, completion, fallback, deletion, and SQLite persistence across a process restart passed. Browser flows rehearsed editable suggestions and fallback on desktop and mobile. Live OpenRouter behavior was not rechecked for this delivery-only milestone.
+Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable Node.js 24.21.0 (npm 11.19.0): 134 pytest tests, 40 development browser tests, six demo browser tests, Ruff lint/format, ty, and the TypeScript/Vite build passed. A fresh local clone with the pending milestone files applied, without copied dependencies, build output, `.env`, or task data, passed dependency installation and the build. The documented default demo and development commands served the UI and health endpoint; the development API proxy worked. Demo task creation, editing, completion, fallback, deletion, undo, and SQLite persistence across a process restart passed. Browser flows rehearsed editable suggestions, fallback, and undo on desktop and mobile. Live OpenRouter behavior was not rechecked for this delivery-only milestone.
 
 ## Milestones
 
@@ -147,6 +149,7 @@ Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable N
 - [x] **3. Add smart suggestions.** Implement the OpenRouter adapter, structured validation, fallback, UI action, `.env` configuration, mocked tests, and a manual live check. Suggested commit: `feat: suggest task priority and label`.
 - [x] **4. Prepare local delivery and verify.** Add the demo start command, FastAPI serving of the built frontend, and Playwright smoke coverage for that workflow. Finalize `.env.example` and README, complete clean-checkout verification, and rehearse the demo as described in [local delivery verification](#local-delivery-verification). Suggested commit: `chore: prepare and verify local delivery`.
 - [x] **5. Add manual task ordering.** Persist completion-group positions, add pointer drag-and-drop rearranging for mouse and touch, turn off priority sorting after a drop, and cover the API and browser flow. Suggested commit: `feat: add drag-and-drop task ordering`.
+- [x] **6. Add undo for edits and deletions.** Add the atomic restore route, expose a one-shot Undo action for the latest successful edit or deletion, and cover the behavior in API and browser tests. Suggested commit: `feat: add task undo`.
 
 Complete milestones in order and keep the application runnable at each boundary.
 

@@ -44,6 +44,15 @@ class TaskUpdate(BaseModel):
         return self
 
 
+class TaskRestore(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: TaskTitle
+    completed: StrictBool
+    priority: Priority
+    label: Label
+
+
 class TaskReorder(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

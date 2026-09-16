@@ -175,7 +175,6 @@ export default function TaskList({
               <div className="task-metadata">
                 <span className={`badge priority-${task.priority}`}>{task.priority} priority</span>
                 <span className="badge label-badge">{task.label}</span>
-                {task.completed && <span className="done-label">Done</span>}
               </div>
             </div>
             <div className="task-actions">

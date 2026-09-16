@@ -9,6 +9,9 @@ function errorMessage(error: unknown): string {
 }
 
 type LabelFilter = "all" | Label;
+type UndoAction =
+  | { kind: "edit"; task: Task }
+  | { kind: "delete"; task: Task };
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -17,6 +20,7 @@ export default function App() {
   const [listError, setListError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formVersion, setFormVersion] = useState(0);
   const [sortByPriority, setSortByPriority] = useState(true);
@@ -68,21 +72,24 @@ export default function App() {
   }
 
   async function saveTask(fields: TaskFields) {
+    const taskBeingEdited = editingTask;
     await mutate(async () => {
-      const saved = editingTask
-        ? await tasksApi.update(editingTask.id, fields)
+      const saved = taskBeingEdited
+        ? await tasksApi.update(taskBeingEdited.id, fields)
         : await tasksApi.create(fields);
-      setTasks((current) => editingTask
+      setTasks((current) => taskBeingEdited
         ? current.map((task) => task.id === saved.id ? saved : task)
         : [saved, ...current]);
+      setUndoAction(taskBeingEdited ? { kind: "edit", task: taskBeingEdited } : null);
       resetForm();
-    }, editingTask ? "Task updated." : "Task added.");
+    }, taskBeingEdited ? "Task updated." : "Task added.");
   }
 
   async function toggleTask(task: Task) {
     await mutate(async () => {
       const saved = await tasksApi.update(task.id, { completed: !task.completed });
       setTasks((current) => current.map((item) => item.id === saved.id ? saved : item));
+      setUndoAction(null);
     }, task.completed ? "Task marked as incomplete." : "Task completed.");
   }
 
@@ -91,8 +98,28 @@ export default function App() {
     await mutate(async () => {
       await tasksApi.remove(task.id);
       setTasks((current) => current.filter((item) => item.id !== task.id));
+      setUndoAction({ kind: "delete", task });
       if (editingTask?.id === task.id) resetForm();
     }, "Task deleted.");
+  }
+
+  async function undoLastAction() {
+    const action = undoAction;
+    if (action === null) return;
+    await mutate(async () => {
+      if (action.kind === "edit") {
+        const restored = await tasksApi.update(action.task.id, {
+          title: action.task.title,
+          priority: action.task.priority,
+          label: action.task.label,
+        });
+        setTasks((current) => current.map((task) => task.id === restored.id ? restored : task));
+      } else {
+        const restored = await tasksApi.restore(action.task);
+        setTasks((current) => [restored, ...current]);
+      }
+      setUndoAction(null);
+    }, action.kind === "edit" ? "Edit undone." : "Task restored.");
   }
 
   async function reorderTasks(taskIds: number[]) {
@@ -109,6 +136,7 @@ export default function App() {
     await mutate(async () => {
       const reordered = await tasksApi.reorder(completeOrder);
       setTasks(reordered);
+      setUndoAction(null);
     }, "Task order updated.");
   }
 
@@ -124,7 +152,17 @@ export default function App() {
               onSave={saveTask}
               onCancel={() => { resetForm(); setMutationError(null); }}
             />
-            <div className="feedback" role="status">{busy ? "Saving changes…" : notice}</div>
+            <div className="feedback" role="status">
+              <span>{busy ? "Saving changes…" : notice}</span>
+              {undoAction && <button
+                className="button secondary undo-button"
+                type="button"
+                onClick={() => void undoLastAction()}
+                disabled={busy}
+              >
+                Undo
+              </button>}
+            </div>
             {mutationError && <div className="error-message" role="alert">{mutationError}</div>}
           </div>
           <section className="list-panel panel" aria-labelledby="list-heading" aria-busy={loading}>
@@ -167,7 +205,7 @@ export default function App() {
               sortByPriority={sortByPriority}
               busy={busy || loading}
               editingId={editingTask?.id}
-              onEdit={(task) => { setEditingTask(task); setMutationError(null); setNotice(""); }}
+              onEdit={(task) => { setEditingTask(task); setUndoAction(null); setMutationError(null); setNotice(""); }}
               onToggle={toggleTask}
               onDelete={deleteTask}
               reorderEnabled
