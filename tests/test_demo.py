@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -6,6 +8,30 @@ from fastapi.testclient import TestClient
 from todo_app import demo
 from todo_app.config import Settings
 from todo_app.main import create_app
+
+
+def test_factory_import_and_explicit_settings_ignore_local_configuration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OPENROUTER_MODEL", "")
+    (tmp_path / ".env").write_text("TODO_DATABASE_PATH=\n", encoding="utf-8")
+    # A fresh process exercises imports before pytest's isolation fixture can run.
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from fastapi.testclient import TestClient\n"
+            "from todo_app.config import Settings\n"
+            "from todo_app.main import create_app\n"
+            "with TestClient(create_app(Settings())) as client:\n"
+            "    assert client.get('/api/health').json() == {'status': 'ok'}\n",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_built_ui_and_api_share_a_server(settings: Settings, tmp_path: Path) -> None:

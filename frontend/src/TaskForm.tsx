@@ -127,13 +127,19 @@ export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps
           <div className="metadata-fields">
             <div>
               <label htmlFor="task-priority">Priority</label>
-              <select id="task-priority" value={priority} onChange={(event) => { clearSuggestion(); setPriority(event.target.value as Priority); }}>
+              <select id="task-priority" value={priority} onChange={(event) => {
+                clearSuggestion();
+                setPriority(event.target.value as Priority);
+              }}>
                 {priorities.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor="task-label">Label</label>
-              <select id="task-label" value={label} onChange={(event) => { clearSuggestion(); setLabel(event.target.value as Label); }}>
+              <select id="task-label" value={label} onChange={(event) => {
+                clearSuggestion();
+                setLabel(event.target.value as Label);
+              }}>
                 {labels.map((value) => <option key={value} value={value}>{value[0]?.toUpperCase()}{value.slice(1)}</option>)}
               </select>
             </div>

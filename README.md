@@ -24,7 +24,7 @@ Tasks persist in `data/tasks.sqlite3` across restarts. The app uses fallback AI 
 `uv run todo-demo` is the normal way to run the app. When actively changing code, use the two-terminal setup below for automatic backend and frontend reloads:
 
 ```sh
-uv run uvicorn todo_app.main:app --reload
+uv run uvicorn todo_app.main:create_app --factory --reload
 ```
 
 ```sh
@@ -46,6 +46,8 @@ The default provider is [OpenRouter](https://openrouter.ai) using the free [Nex-
 1. Create an OpenRouter key from [OpenRouter](https://openrouter.ai/settings/keys).
 2. Create `.env` from [.env.example](.env.example) and set `OPENROUTER_API_KEY`.
 3. Restart the backend and request a suggestion from the UI.
+
+Settings are read when the app is created. Environment variables override the root `.env` file, which overrides built-in defaults. An empty `OPENROUTER_API_KEY` disables live suggestions even if `.env` contains a key.
 
 The key stays on the backend. Only the suggestion action sends the title to OpenRouter; task creation and editing do not call the provider. For the prompt, structured output, validation, timeout, and fallback policy, see the [LLM design](PLAN.md#llm-design).
 

@@ -79,11 +79,11 @@ scripts/check_ai.py  explicit manual check with the live provider
 
 Split files only for a clear second responsibility.
 
-Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#local-development). The application factory accepts explicit settings for test isolation. Create the single `tasks` table idempotently at startup; its private schema needs no migration framework. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time and ID remain unchanged. Sort by creation time descending, then ID descending to break ties.
+Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#develop-with-live-reload). The application factory accepts explicit settings for test isolation. Importing it does not construct an app or read local settings; Uvicorn calls it using `--factory`, and the demo calls it directly. Create the single `tasks` table idempotently at startup; its private schema needs no migration framework. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time and ID remain unchanged. Sort by creation time descending, then ID descending to break ties.
 
 React keeps form/loading/error state locally; no state library. `App.tsx` coordinates the form and list components, while `api.ts` validates received task shapes and maps failures to stable user messages without displaying raw server details. Mutations first apply the confirmed API result locally, then refetch the short list. This keeps a saved change visible if the follow-up fetch fails. Controls prevent overlapping mutations and requests have a short timeout.
 
-Vite proxies `/api` in development; [local setup and ports](README.md#quick-start) are documented in README.
+Vite proxies `/api` in development; [local setup and ports](README.md#develop-with-live-reload) are documented in README.
 
 ### Local delivery
 

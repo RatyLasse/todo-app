@@ -31,8 +31,18 @@ export default function TaskList({ tasks, busy, editingId, onEdit, onToggle, onD
               </div>
             </div>
             <div className="task-actions">
-              <button className="button text-button" type="button" onClick={() => onEdit(task)} disabled={busy} aria-label={`Edit ${task.title}`}>Edit</button>
-              <button className="button text-button delete-button" type="button" onClick={() => void onDelete(task)} disabled={busy} aria-label={`Delete ${task.title}`}>Delete</button>
+              <button className="button text-button" type="button"
+                onClick={() => onEdit(task)} disabled={busy}
+                aria-label={`Edit ${task.title}`}
+              >
+                Edit
+              </button>
+              <button className="button text-button delete-button" type="button"
+                onClick={() => void onDelete(task)} disabled={busy}
+                aria-label={`Delete ${task.title}`}
+              >
+                Delete
+              </button>
             </div>
           </article>
         </li>

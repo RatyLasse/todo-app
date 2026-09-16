@@ -106,10 +106,7 @@ def create_app(
         def api_root() -> RedirectResponse:
             return RedirectResponse(url="/docs")
 
-    if frontend_directory is not None:
+    else:
         app.mount("/", StaticFiles(directory=frontend_directory, html=True), name="ui")
 
     return app
-
-
-app = create_app()
