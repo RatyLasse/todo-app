@@ -162,7 +162,16 @@ export default function TaskList({
               aria-label={`Mark ${task.title} as ${task.completed ? "incomplete" : "complete"}`}
             />
             <div className="task-content">
-              <h3 id={`task-${task.id}`}>{task.title}</h3>
+              <h3 id={`task-${task.id}`}>
+                <button
+                  className="task-title"
+                  type="button"
+                  onClick={() => onEdit(task)}
+                  disabled={busy}
+                >
+                  {task.title}
+                </button>
+              </h3>
               <div className="task-metadata">
                 <span className={`badge priority-${task.priority}`}>{task.priority} priority</span>
                 <span className="badge label-badge">{task.label}</span>
@@ -170,12 +179,6 @@ export default function TaskList({
               </div>
             </div>
             <div className="task-actions">
-              <button className="button text-button" type="button"
-                onClick={() => onEdit(task)} disabled={busy}
-                aria-label={`Edit ${task.title}`}
-              >
-                Edit
-              </button>
               <button className="button text-button delete-button" type="button"
                 onClick={() => void onDelete(task)} disabled={busy}
                 aria-label={`Delete ${task.title}`}

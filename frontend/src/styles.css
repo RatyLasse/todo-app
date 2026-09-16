@@ -66,6 +66,8 @@ input[aria-invalid="true"] { border-color: #a13c32; }
 input[type="checkbox"] { accent-color: var(--green); width: 20px; height: 20px; flex-shrink: 0; margin: 1px 0 0; cursor: pointer; }
 .task-content { min-width: 0; flex: 1; }
 .task-content h3 { font-size: 14px; line-height: 1.6; font-weight: 600; overflow-wrap: anywhere; margin-top: -2px; }
+.task-title { display: block; width: 100%; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; font-size: inherit; line-height: inherit; font-weight: inherit; overflow-wrap: anywhere; }
+.task-title:hover:not(:disabled) { color: var(--green); text-decoration: underline; }
 .task-metadata { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 10px; }
 .badge { border-radius: 5px; padding: 4px 7px; font-size: 10px; font-weight: 600; line-height: 1.4; }
 .priority-high { color: #9c3d2d; background: #fff0e9; }

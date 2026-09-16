@@ -60,13 +60,14 @@ test("create, edit, cancel, complete, reopen, and delete a task", async ({ page 
   await expect(original.getByText("health", { exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Task title" })).toHaveValue("");
 
-  await original.getByRole("button", { name: "Edit Book dentist appointment", exact: true }).click();
+  await expect(original.getByRole("button", { name: "Edit Book dentist appointment", exact: true })).toHaveCount(0);
+  await original.getByRole("button", { name: "Book dentist appointment", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Task title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Task title" }).fill("Discard this edit");
   await page.getByRole("button", { name: "Cancel editing" }).click();
   await expect(original).toBeVisible();
 
-  await original.getByRole("button", { name: "Edit Book dentist appointment", exact: true }).click();
+  await original.getByRole("button", { name: "Book dentist appointment", exact: true }).click();
   await page.getByRole("textbox", { name: "Task title" }).fill("Book annual checkup");
   await page.getByRole("combobox", { name: "Priority" }).selectOption("low");
   await page.getByRole("combobox", { name: "Label", exact: true }).selectOption("personal");
@@ -285,7 +286,7 @@ test("failed edits, completion changes, and deletion preserve the task", async (
   await task.getByRole("checkbox").click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(task.getByRole("checkbox")).not.toBeChecked();
-  await task.getByRole("button", { name: "Edit Keep this task", exact: true }).click();
+  await task.getByRole("button", { name: "Keep this task", exact: true }).click();
   await page.getByRole("textbox", { name: "Task title" }).fill("Keep these unsaved changes");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("alert")).toBeVisible();
@@ -397,7 +398,7 @@ for (const action of ["edit title", "edit metadata", "save", "cancel editing"] a
     }
     await openApp(page);
     if (action === "cancel editing") {
-      await page.getByRole("button", { name: "Edit Original task", exact: true }).click();
+      await page.getByRole("button", { name: "Original task", exact: true }).click();
     }
     await page.getByRole("textbox", { name: "Task title" }).fill("Pending task");
     const started = deferredSignal();
