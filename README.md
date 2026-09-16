@@ -63,9 +63,9 @@ Run the backend tests and quality checks from the repository root:
 
 ```sh
 uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-uv run ty check
+uv run ruff check --fix
+uv run ruff format
+uv run ty check --fix
 npm --prefix frontend run build
 ```
 
