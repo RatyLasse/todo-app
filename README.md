@@ -31,7 +31,7 @@ uv run uvicorn todo_app.main:app --reload
 npm --prefix frontend run dev
 ```
 
-Open **<http://127.0.0.1:5173>** for the development UI. The Vite server proxies `/api` to FastAPI on port 8000. The API documentation is at <http://127.0.0.1:8000/docs>, and its health endpoint is <http://127.0.0.1:8000/api/health>.
+Open **<http://127.0.0.1:5173>** for the development UI. The Vite server proxies `/api` to FastAPI on port 8000. The API root at <http://127.0.0.1:8000/> redirects to the interactive documentation at <http://127.0.0.1:8000/docs>, and its health endpoint is <http://127.0.0.1:8000/api/health>.
 
 The frontend build is written to `frontend/dist`; rebuild it after frontend changes when using the demo. Set `TODO_DATABASE_PATH` to use another SQLite file.
 

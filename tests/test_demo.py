@@ -46,8 +46,11 @@ def test_built_ui_and_api_share_a_server(settings: Settings, tmp_path: Path) -> 
         assert restarted.get("/api/tasks").json() == [created.json()]
 
 
-def test_development_remains_api_only(client: TestClient) -> None:
-    assert client.get("/").status_code == 404
+def test_development_root_redirects_to_docs(client: TestClient) -> None:
+    response = client.get("/", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
 
 
 def test_demo_explains_missing_build(

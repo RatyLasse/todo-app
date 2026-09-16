@@ -41,7 +41,7 @@ Priority estimates urgency from the title: `high` for explicit urgency, `low` fo
 
 ## Interfaces
 
-All HTTP routes use JSON under `/api`, except deletion, which returns no body.
+API routes use JSON under `/api`, except deletion, which returns no body. In API-only development mode, `GET /` redirects to `/docs` for a useful browser landing page; the demo mode serves the built UI at `/` instead.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
@@ -89,7 +89,7 @@ Vite proxies `/api` in development; [local setup and ports](README.md#quick-star
 
 Use native Python and Node.js tooling for local development and delivery. Docker is optional in the exercise brief and cannot run on the current development VM, so Docker packaging is outside scope. Verify the native workflow from a clean checkout and rehearse it for the interview.
 
-The `todo-demo` command checks for `frontend/dist/index.html` and starts FastAPI on loopback with the built UI alongside `/api`: one process and one port, with SQLite stored at the same configured local database path. The application factory accepts an optional frontend directory; only the demo opts into static serving. Mount static files after API routes, serve the index at `/`, and return `404` for unknown paths and missing assets. No client-side routing fallback is needed for this single-page UI. The build stays in the local checkout rather than the Python wheel. Keep the separate Vite and FastAPI servers for development with automatic reload. README owns the exact [setup, build, and start commands](README.md#run-the-demo).
+The `todo-demo` command checks for `frontend/dist/index.html` and starts FastAPI on loopback with the built UI alongside `/api`: one process and one port, with SQLite stored at the same configured local database path. The application factory accepts an optional frontend directory; only the demo opts into static serving. In API-only mode, serve `/docs` from the root redirect; with the frontend directory, mount static files after API routes and serve the index at `/`. Return `404` for unknown paths and missing assets. No client-side routing fallback is needed for this single-page UI. The build stays in the local checkout rather than the Python wheel. Keep the separate Vite and FastAPI servers for development with automatic reload. README owns the exact [setup, build, and start commands](README.md#run-the-demo).
 
 ## LLM design
 

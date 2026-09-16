@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 
@@ -99,6 +99,12 @@ def create_app(
         if not database.delete_task(task_id):
             raise HTTPException(status_code=404, detail="Task not found")
         return Response(status_code=204)
+
+    if frontend_directory is None:
+
+        @app.get("/", include_in_schema=False)
+        def api_root() -> RedirectResponse:
+            return RedirectResponse(url="/docs")
 
     if frontend_directory is not None:
         app.mount("/", StaticFiles(directory=frontend_directory, html=True), name="ui")
