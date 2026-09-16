@@ -17,7 +17,7 @@ from todo_app.config import Settings
 from todo_app.schemas import TaskMetadata, TaskSuggestion
 
 logger = logging.getLogger(__name__)
-SUGGESTION_TIMEOUT_SECONDS = 8.0
+SUGGESTION_TIMEOUT_SECONDS = 10.0
 type SuggestionProvider = Callable[[str], Awaitable[TaskMetadata | None]]
 
 CLASSIFICATION_INSTRUCTIONS = """Classify a task title into one priority and one label.
