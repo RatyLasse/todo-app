@@ -19,7 +19,7 @@ export default function App() {
   const [formVersion, setFormVersion] = useState(0);
   const openCount = tasks.filter((task) => !task.completed).length;
 
-  async function refreshTasks(signal?: AbortSignal) {
+  async function loadTasks(signal?: AbortSignal) {
     setLoading(true);
     setListError(null);
     try {
@@ -34,7 +34,7 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void refreshTasks(controller.signal);
+    void loadTasks(controller.signal);
     return () => controller.abort();
   }, []);
 
@@ -51,8 +51,8 @@ export default function App() {
     try {
       await operation();
       setNotice(successMessage);
-      // Keep the confirmed result visible even if this refresh fails.
-      await refreshTasks();
+      // Keep the confirmed result visible even if reloading the list fails.
+      await loadTasks();
     } catch (error) {
       setMutationError(errorMessage(error));
     } finally {
@@ -90,16 +90,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">✓</span><span>Todo</span></div>
-        <span className="header-note">A little clarity for your day.</span>
-      </header>
       <main>
-        <div className="page-heading">
-          <span className="eyebrow">YOUR SPACE TO GET THINGS DONE</span>
-          <h1>A clearer list. A lighter day.</h1>
-          <p>Capture a task, set its priority, and take it one step at a time.</p>
-        </div>
         <div className="workspace">
           <div>
             <TaskForm
@@ -118,7 +109,6 @@ export default function App() {
                 <h2 id="list-heading">Your tasks</h2>
                 <p>{tasks.length > 0 ? `${openCount} open · ${tasks.length - openCount} done` : "A place for everything on your mind."}</p>
               </div>
-              <button className="button secondary refresh-button" type="button" disabled={busy || loading} onClick={() => void refreshTasks()}>Refresh tasks</button>
             </div>
             {listError && <div className="error-message list-error" role="alert">{listError}</div>}
             {loading && <p className="loading-message" role="status">Loading tasks…</p>}
@@ -138,7 +128,6 @@ export default function App() {
           </section>
         </div>
       </main>
-      <footer>Small steps count.</footer>
     </div>
   );
 }

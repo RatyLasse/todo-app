@@ -92,16 +92,12 @@ test("validate the title without losing form values", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
 
-test("retry a failed initial load", async ({ page }) => {
+test("show a failed initial load without a refresh control", async ({ page }) => {
   await page.route("**/api/tasks", (route) => route.fulfill({ status: 503 }));
   await page.goto("/");
   await expect(page.getByRole("alert")).toContainText("Could not load tasks.");
   await expect(page.getByRole("heading", { name: "A fresh start" })).toHaveCount(0);
-
-  await page.unroute("**/api/tasks");
-  await page.getByRole("button", { name: "Refresh tasks" }).click();
-  await expect(page.getByRole("heading", { name: "A fresh start" })).toBeVisible();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Refresh tasks" })).toHaveCount(0);
 });
 
 test("keep the draft and hide server details when saving fails", async ({ page }) => {
@@ -160,10 +156,6 @@ test("a confirmed save stays visible when refreshing the list fails", async ({ p
   await expect(page.getByRole("article", { name: "Saved despite refresh failure", exact: true })).toHaveCount(1);
   const response = await request.get("/api/tasks");
   expect(await response.json()).toHaveLength(1);
-
-  await page.unroute("**/api/tasks");
-  await page.getByRole("button", { name: "Refresh tasks" }).click();
-  await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByRole("article")).toHaveCount(1);
 });
 

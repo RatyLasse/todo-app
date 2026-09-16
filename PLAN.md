@@ -27,7 +27,7 @@ A task contains:
 
 One form and list support creation, title/priority/label editing, completion toggling, and permanent deletion. Defaults: priority `medium`, label `other`.
 
-Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. Loading, saving, empty, success, and error states are visible, and a failed list load offers manual refresh. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
+Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
 
 ### Smart suggestion
 

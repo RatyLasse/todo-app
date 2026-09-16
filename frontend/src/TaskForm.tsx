@@ -88,9 +88,9 @@ export default function TaskForm({ task, busy, onSave, onCancel }: TaskFormProps
   return (
     <section className="form-panel panel" aria-labelledby="form-heading">
       <div className="section-heading">
-        <span className="eyebrow">{task ? "MAKE A CHANGE" : "ONE THING AT A TIME"}</span>
+        {task && <span className="eyebrow">MAKE A CHANGE</span>}
         <h2 id="form-heading">{task ? "Edit task" : "Add a task"}</h2>
-        <p>{task ? "Update the details, then save your changes." : "What would you like to get done?"}</p>
+        {task && <p>Update the details, then save your changes.</p>}
       </div>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <fieldset disabled={busy}>
