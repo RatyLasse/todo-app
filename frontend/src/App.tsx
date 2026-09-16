@@ -13,6 +13,11 @@ type UndoAction =
   | { kind: "edit"; task: Task }
   | { kind: "delete"; task: Task };
 
+function clickCancelsEditing(target: EventTarget | null): boolean {
+  return !(target instanceof Element)
+    || target.closest("button, input, select, textarea, label, a, [role=\"button\"], [role=\"link\"], .form-panel, .task-row.editing") === null;
+}
+
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +58,23 @@ export default function App() {
     setEditingTask(null);
     setFormVersion((version) => version + 1);
   }
+
+  function cancelEditing() {
+    resetForm();
+    setMutationError(null);
+  }
+
+  useEffect(() => {
+    if (editingTask === null) return;
+
+    function handleDocumentClick(event: MouseEvent): void {
+      if (!clickCancelsEditing(event.target)) return;
+      cancelEditing();
+    }
+
+    document.addEventListener("click", handleDocumentClick);
+    return () => document.removeEventListener("click", handleDocumentClick);
+  }, [editingTask]);
 
   async function mutate(operation: () => Promise<void>, successMessage: string) {
     if (busy) return;
@@ -150,7 +172,7 @@ export default function App() {
               task={editingTask}
               busy={busy || loading}
               onSave={saveTask}
-              onCancel={() => { resetForm(); setMutationError(null); }}
+              onCancel={cancelEditing}
             />
             <div className="feedback" role="status">
               <span>{busy ? "Saving changes…" : notice}</span>

@@ -117,6 +117,22 @@ test("create, edit, cancel, complete, reopen, and delete a task", async ({ page 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
 
+test("clicking an empty page area cancels task editing", async ({ page }) => {
+  await openApp(page);
+  const task = await createTask(page, { title: "Original task" });
+
+  await task.getByRole("button", { name: "Original task", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Edit task", exact: true })).toBeVisible();
+  await page.getByRole("textbox", { name: "Task title" }).fill("Discard this edit");
+  await page.getByRole("heading", { name: "Edit task", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Edit task", exact: true })).toBeVisible();
+  await page.mouse.click(1, 1);
+
+  await expect(page.getByRole("heading", { name: "Add a task", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Task title" })).toHaveValue("");
+  await expect(page.getByRole("article", { name: "Original task", exact: true })).toBeVisible();
+});
+
 test("moves completed tasks to the bottom and restores their original place", async ({ page }) => {
   await openApp(page);
   const titles = ["Oldest task", "Middle task", "Newest task"];

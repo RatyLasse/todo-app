@@ -27,7 +27,7 @@ A task contains:
 
 One form and list support creation, title/priority/label editing, completion toggling, and permanent deletion. Defaults: priority `medium`, label `other`.
 
-Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. After a successful edit or deletion, a one-shot Undo button reverses that latest change; a deletion restore keeps the title, metadata, and completion state, but receives a new server-generated ID. Starting another edit or making a later successful task mutation clears or replaces the available undo action. Open tasks stay above completed tasks; priority sorting is enabled by default for open tasks, and disabling it shows their persisted manual order. Open and completed tasks can be rearranged by pointer drag-and-drop or keyboard movement within their own group, including while a label filter is active; dropping or moving a task disables priority sorting. Completed tasks move to the bottom with the most recently completed first by default; reopening a task returns it to its manual open-task position. Label filtering is inactive by default. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
+Editing fills the same form and focuses the title; canceling or clicking a non-interactable page area discards the draft and returns to adding a task. Deletion asks for confirmation. Failed saves retain form values and existing task state. After a successful edit or deletion, a one-shot Undo button reverses that latest change; a deletion restore keeps the title, metadata, and completion state, but receives a new server-generated ID. Starting another edit or making a later successful task mutation clears or replaces the available undo action. Open tasks stay above completed tasks; priority sorting is enabled by default for open tasks, and disabling it shows their persisted manual order. Open and completed tasks can be rearranged by pointer drag-and-drop or keyboard movement within their own group, including while a label filter is active; dropping or moving a task disables priority sorting. Completed tasks move to the bottom with the most recently completed first by default; reopening a task returns it to its manual open-task position. Label filtering is inactive by default. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
 
 ### Smart suggestion
 
@@ -125,7 +125,7 @@ Automated tests must never call a live provider or require an API key; inject or
 
 ### Playwright
 
-- Create, edit, cancel editing, complete, reopen, and delete a task through the browser, including reload persistence and deletion confirmation.
+- Create, edit, cancel editing (including a background click), complete, reopen, and delete a task through the browser, including reload persistence and deletion confirmation.
 - Verify Undo reverses the latest successful edit and deletion, restores deleted metadata and completion state, is one-shot, and is replaced by a later successful mutation.
 - Check form validation and recovery from failed loads, mutations, and refreshes after successful saves.
 - Request a suggestion from a stubbed or deterministic backend, edit it, save the task, and verify the displayed values.
