@@ -133,6 +133,70 @@ test("sorts open tasks by priority and filters by label", async ({ page }) => {
 
   await page.getByRole("combobox", { name: "Filter by label" }).selectOption("work");
   await expect.poll(taskTitles).toEqual(["Medium work task", "Low work task"]);
+
+  const lowWorkTask = page.getByRole("article", { name: "Low work task", exact: true });
+  const mediumWorkTask = page.getByRole("article", { name: "Medium work task", exact: true });
+  await lowWorkTask.getByRole("button", { name: "Drag Low work task to reorder" }).dragTo(
+    mediumWorkTask.getByRole("button", { name: "Drag Medium work task to reorder" }),
+  );
+  await expect.poll(taskTitles).toEqual(["Low work task", "Medium work task"]);
+  await page.getByRole("combobox", { name: "Filter by label" }).selectOption("all");
+  await expect.poll(taskTitles).toEqual(["Low work task", "Medium work task", "High personal task"]);
+});
+
+test("rearranges completed tasks within their group", async ({ page }) => {
+  await openApp(page);
+  for (const title of ["First done", "Second done", "Third done"]) {
+    await page.getByRole("textbox", { name: "Task title" }).fill(title);
+    await page.getByRole("button", { name: "Add task", exact: true }).click();
+    await page.getByRole("article", { name: title, exact: true }).getByRole("checkbox").click();
+  }
+
+  const taskTitles = (): Promise<string[]> => page.getByRole("list", { name: "Tasks" })
+    .getByRole("heading", { level: 3 }).allTextContents();
+  await page.getByRole("combobox", { name: "Filter by label" }).selectOption("other");
+  await expect.poll(taskTitles).toEqual(["Third done", "Second done", "First done"]);
+
+  const firstDone = page.getByRole("article", { name: "First done", exact: true });
+  const thirdDone = page.getByRole("article", { name: "Third done", exact: true });
+  await firstDone.getByRole("button", { name: "Drag First done to reorder" }).dragTo(
+    thirdDone.getByRole("button", { name: "Drag Third done to reorder" }),
+  );
+  await expect.poll(taskTitles).toEqual(["First done", "Third done", "Second done"]);
+  await expect(page.getByRole("button", { name: "Sort by priority" })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("rearranges tasks by drag and drop and disables priority sorting", async ({ page }) => {
+  await openApp(page);
+  const tasks = [
+    { title: "Low task", priority: "low" },
+    { title: "High task", priority: "high" },
+    { title: "Medium task", priority: "medium" },
+  ] as const;
+  for (const task of tasks) {
+    await page.getByRole("textbox", { name: "Task title" }).fill(task.title);
+    await page.getByRole("combobox", { name: "Priority" }).selectOption(task.priority);
+    await page.getByRole("button", { name: "Add task", exact: true }).click();
+  }
+
+  const taskTitles = (): Promise<string[]> => page.getByRole("list", { name: "Tasks" })
+    .getByRole("heading", { level: 3 }).allTextContents();
+  await expect.poll(taskTitles).toEqual(["High task", "Medium task", "Low task"]);
+
+  const lowTask = page.getByRole("article", { name: "Low task", exact: true });
+  const highTask = page.getByRole("article", { name: "High task", exact: true });
+  await lowTask.getByRole("button", { name: "Drag Low task to reorder" }).dragTo(
+    highTask.getByRole("button", { name: "Drag High task to reorder" }),
+  );
+
+  const sortButton = page.getByRole("button", { name: "Sort by priority" });
+  await expect(sortButton).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(taskTitles).toEqual(["Low task", "High task", "Medium task"]);
+
+  await page.reload();
+  await expect(sortButton).toHaveAttribute("aria-pressed", "true");
+  await sortButton.click();
+  await expect.poll(taskTitles).toEqual(["Low task", "High task", "Medium task"]);
 });
 
 test("validate the title without losing form values", async ({ page }) => {

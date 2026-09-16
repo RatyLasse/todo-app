@@ -17,6 +17,7 @@ from todo_app.schemas import (
     SuggestionRequest,
     Task,
     TaskCreate,
+    TaskReorder,
     TaskSuggestion,
     TaskUpdate,
 )
@@ -82,6 +83,16 @@ def create_app(
     @app.post("/api/tasks", status_code=201)
     def create_task(task: TaskCreate) -> Task:
         return database.create_task(task)
+
+    @app.post(
+        "/api/tasks/reorder",
+        responses={422: {"model": ErrorResponse}},
+    )
+    def reorder_tasks(order: TaskReorder) -> list[Task]:
+        reordered_tasks = database.reorder_tasks(order.task_ids)
+        if reordered_tasks is None:
+            raise HTTPException(status_code=422, detail="Invalid request")
+        return reordered_tasks
 
     @app.patch("/api/tasks/{task_id}", responses={404: {"model": ErrorResponse}})
     def update_task(task_id: TaskId, task: TaskUpdate) -> Task:

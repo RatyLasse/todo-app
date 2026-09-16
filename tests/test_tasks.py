@@ -1,5 +1,8 @@
 import logging
+import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -146,6 +149,145 @@ def test_timestamps_and_creation_order(client: TestClient) -> None:
     assert updated["created_at"] == first["created_at"]
     assert datetime.fromisoformat(updated["updated_at"]) == updated_at
     assert client.get("/api/tasks").json() == [second, updated]
+
+
+def test_reorder_open_tasks_and_restore_their_positions(client: TestClient) -> None:
+    first = client.post("/api/tasks", json={"title": "First"}).json()
+    second = client.post("/api/tasks", json={"title": "Second"}).json()
+    third = client.post("/api/tasks", json={"title": "Third"}).json()
+
+    response = client.post(
+        "/api/tasks/reorder",
+        json={"task_ids": [first["id"], third["id"], second["id"]]},
+    )
+
+    assert response.status_code == 200
+    assert [task["title"] for task in response.json()] == [
+        "First",
+        "Third",
+        "Second",
+    ]
+    assert [task["title"] for task in client.get("/api/tasks").json()] == [
+        "First",
+        "Third",
+        "Second",
+    ]
+
+    client.patch(f"/api/tasks/{second['id']}", json={"completed": True})
+    assert [task["title"] for task in client.get("/api/tasks").json()] == [
+        "First",
+        "Third",
+        "Second",
+    ]
+    client.patch(f"/api/tasks/{second['id']}", json={"completed": False})
+    assert [task["title"] for task in client.get("/api/tasks").json()] == [
+        "First",
+        "Third",
+        "Second",
+    ]
+
+
+def test_reorder_completed_tasks_without_changing_open_positions(
+    client: TestClient,
+) -> None:
+    first = client.post("/api/tasks", json={"title": "First"}).json()
+    second = client.post("/api/tasks", json={"title": "Second"}).json()
+    third = client.post("/api/tasks", json={"title": "Third"}).json()
+    for task in (first, second, third):
+        assert (
+            client.patch(
+                f"/api/tasks/{task['id']}", json={"completed": True}
+            ).status_code
+            == 200
+        )
+
+    response = client.post(
+        "/api/tasks/reorder",
+        json={"task_ids": [third["id"], first["id"], second["id"]]},
+    )
+
+    assert response.status_code == 200
+    assert [task["title"] for task in response.json()] == [
+        "Third",
+        "First",
+        "Second",
+    ]
+    assert [task["title"] for task in client.get("/api/tasks").json()] == [
+        "Third",
+        "First",
+        "Second",
+    ]
+
+
+def test_reorder_rejects_duplicate_or_unknown_tasks(client: TestClient) -> None:
+    first = client.post("/api/tasks", json={"title": "First"}).json()
+    second = client.post("/api/tasks", json={"title": "Second"}).json()
+
+    for task_ids in ([first["id"], first["id"]], [first["id"], 9999]):
+        response = client.post("/api/tasks/reorder", json={"task_ids": task_ids})
+        assert response.status_code == 422
+        assert response.json() == {"detail": "Invalid request"}
+
+    assert [task["id"] for task in client.get("/api/tasks").json()] == [
+        second["id"],
+        first["id"],
+    ]
+
+
+def test_initialize_migrates_existing_tasks_to_manual_positions(tmp_path: Path) -> None:
+    database_path = tmp_path / "data" / "tasks.sqlite3"
+    database_path.parent.mkdir()
+    with closing(sqlite3.connect(database_path)) as connection, connection:
+        connection.execute(
+            """
+            CREATE TABLE tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                completed INTEGER NOT NULL DEFAULT 0,
+                priority TEXT NOT NULL,
+                label TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.executemany(
+            """
+            INSERT INTO tasks (
+                title, completed, priority, label, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    "Older",
+                    0,
+                    "medium",
+                    "other",
+                    "2026-01-01T00:00:00+00:00",
+                    "2026-01-01T00:00:00+00:00",
+                ),
+                (
+                    "Newer",
+                    0,
+                    "medium",
+                    "other",
+                    "2026-01-02T00:00:00+00:00",
+                    "2026-01-02T00:00:00+00:00",
+                ),
+            ],
+        )
+
+    database = Database(database_path)
+    database.initialize()
+
+    assert [task.title for task in database.list_tasks()] == ["Newer", "Older"]
+    created = database.create_task(TaskCreate(title="Newest"))
+    assert [task.title for task in database.list_tasks()] == [
+        "Newest",
+        "Newer",
+        "Older",
+    ]
+    assert created.title == "Newest"
 
 
 @pytest.mark.parametrize(

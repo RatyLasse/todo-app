@@ -4,6 +4,7 @@ from typing import Annotated, Literal, Self
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     StrictBool,
     StringConstraints,
     model_validator,
@@ -11,6 +12,7 @@ from pydantic import (
 
 type Priority = Literal["low", "medium", "high"]
 type Label = Literal["work", "personal", "errands", "finance", "health", "other"]
+type TaskIdValue = Annotated[int, Field(strict=True, ge=1, le=2**63 - 1)]
 type TaskTitle = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=200, strict=True),
@@ -39,6 +41,18 @@ class TaskUpdate(BaseModel):
             raise ValueError("Supply at least one task field")
         if any(getattr(self, field) is None for field in self.model_fields_set):
             raise ValueError("Task fields cannot be null")
+        return self
+
+
+class TaskReorder(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    task_ids: list[TaskIdValue] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_unique_ids(self) -> Self:
+        if len(self.task_ids) != len(set(self.task_ids)):
+            raise ValueError("Task IDs must be unique")
         return self
 
 

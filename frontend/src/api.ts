@@ -73,6 +73,13 @@ function parseTask(value: unknown): Task {
   return value;
 }
 
+function parseTaskList(value: unknown): Task[] {
+  if (!Array.isArray(value) || !value.every(isTask)) {
+    throw new Error("The server returned an invalid task list. Please try again.");
+  }
+  return value;
+}
+
 export async function suggestMetadata(title: string, signal?: AbortSignal): Promise<TaskSuggestion> {
   const value = await request("/task-suggestions", {
     method: "POST", body: JSON.stringify({ title }), signal,
@@ -90,11 +97,7 @@ export async function suggestMetadata(title: string, signal?: AbortSignal): Prom
 
 export const tasksApi = {
   async list(signal?: AbortSignal): Promise<Task[]> {
-    const value = await request("/tasks", { signal });
-    if (!Array.isArray(value) || !value.every(isTask)) {
-      throw new Error("The server returned an invalid task list. Please try again.");
-    }
-    return value;
+    return parseTaskList(await request("/tasks", { signal }));
   },
 
   async create(fields: TaskFields): Promise<Task> {
@@ -103,6 +106,12 @@ export const tasksApi = {
 
   async update(id: number, fields: Partial<TaskFields & { completed: boolean }>): Promise<Task> {
     return parseTask(await request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(fields) }));
+  },
+
+  async reorder(taskIds: number[]): Promise<Task[]> {
+    return parseTaskList(await request("/tasks/reorder", {
+      method: "POST", body: JSON.stringify({ task_ids: taskIds }),
+    }));
   },
 
   async remove(id: number): Promise<void> {

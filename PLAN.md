@@ -27,7 +27,7 @@ A task contains:
 
 One form and list support creation, title/priority/label editing, completion toggling, and permanent deletion. Defaults: priority `medium`, label `other`.
 
-Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. Open tasks stay above completed tasks; priority sorting is enabled by default for open tasks, and disabling it restores their original newest-first order. Completed tasks move to the bottom with the most recently completed first; reopening a task returns it to its original open-task position. Label filtering is inactive by default. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
+Editing fills the same form and focuses the title; canceling discards the draft. Deletion asks for confirmation. Failed saves retain form values and existing task state. Open tasks stay above completed tasks; priority sorting is enabled by default for open tasks, and disabling it shows their persisted manual order. Open and completed tasks can be rearranged by pointer drag-and-drop or keyboard movement within their own group, including while a label filter is active; dropping or moving a task disables priority sorting. Completed tasks move to the bottom with the most recently completed first by default; reopening a task returns it to its manual open-task position. Label filtering is inactive by default. Loading, saving, empty, success, and error states are visible. The layout supports desktop and mobile screens with labeled controls and keyboard focus indicators.
 
 ### Smart suggestion
 
@@ -45,8 +45,9 @@ API routes use JSON under `/api`, except deletion, which returns no body. In API
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/tasks` | List tasks, newest first |
+| `GET` | `/api/tasks` | List tasks in manual group order, with newest-first defaults |
 | `POST` | `/api/tasks` | Create a task |
+| `POST` | `/api/tasks/reorder` | Persist the order of all tasks within their completion groups |
 | `PATCH` | `/api/tasks/{id}` | Change supplied task fields |
 | `DELETE` | `/api/tasks/{id}` | Delete a task and return `204` |
 | `POST` | `/api/task-suggestions` | Suggest priority and label for a title |
@@ -79,7 +80,7 @@ scripts/check_ai.py  explicit manual check with the live provider
 
 Split files only for a clear second responsibility.
 
-Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#develop-with-live-reload). The application factory accepts explicit settings for test isolation. Importing it does not construct an app or read local settings; Uvicorn calls it using `--factory`, and the demo calls it directly. Create the single `tasks` table idempotently at startup; its private schema needs no migration framework. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time and ID remain unchanged. Sort by creation time descending, then ID descending to break ties.
+Use Python's `sqlite3` with an on-disk database path configured as described in [local development](README.md#develop-with-live-reload). The application factory accepts explicit settings for test isolation. Importing it does not construct an app or read local settings; Uvicorn calls it using `--factory`, and the demo calls it directly. Create the single `tasks` table idempotently at startup; add the manual position columns to existing databases in the same startup check. Each operation owns a connection and transaction, with values bound as SQL parameters. Partial updates touch only supplied fields and the update timestamp; creation time, ID, and manual positions remain unchanged. New tasks start at the top of the open-task order, and newly completed tasks start at the top of the completed-task order. Reordering validates and updates both completion-group positions atomically. List tasks by manual open-task position, completed status, manual completed-task position, completion timestamp, and ID; a migrated database initially follows creation time descending for open tasks and completion time descending for completed tasks.
 
 React keeps form/loading/error state locally; no state library. `App.tsx` coordinates the form and list components, while `api.ts` validates received task shapes and maps failures to stable user messages without displaying raw server details. Mutations first apply the confirmed API result locally, then refetch the short list. This keeps a saved change visible if the follow-up fetch fails. Controls prevent overlapping mutations and requests have a short timeout.
 
@@ -119,6 +120,7 @@ Automated tests must never call a live provider or require an API key; inject or
 - Inject a provider or mock the SDK HTTP transport and verify a valid structured AI result reaches the API response without saving a task.
 - Cover missing-key, provider/transport-error, malformed-response, refusal, and deadline fallbacks without network access; verify retries are disabled.
 - Verify task text and credentials are absent from captured logs.
+- Verify manual ordering, reorder validation, persistence across application instances, and restoration after completion/reopening for both completion groups.
 
 ### Playwright
 
@@ -127,6 +129,7 @@ Automated tests must never call a live provider or require an API key; inject or
 - Request a suggestion from a stubbed or deterministic backend, edit it, save the task, and verify the displayed values.
 - Verify fallback messaging.
 - Verify failed suggestions preserve manual values and late responses cannot overwrite edits, saved tasks, or a different draft.
+- Verify open and completed tasks can be dragged into a custom order, including inside a label filter, that dropping disables priority sorting, that groups cannot be crossed, and that the order survives reload on desktop and mobile.
 
 Keep the browser suite focused on user flows; backend tests own validation and provider edge cases. The manual, suggestion, and failure tests run in desktop and mobile Chromium. Playwright starts separate servers with a temporary database and explicit settings without an API key, runs one worker with database cleanup before each test, and never reuses development servers. Successful LLM suggestions use stubbed browser responses; fallback tests use the backend. See [test commands and artifacts](README.md#tests).
 
@@ -143,6 +146,7 @@ Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable N
 - [x] **2. Build the task UI.** Add the Vite React app and complete the manual task workflow, with Playwright coverage for the affected flows. Suggested commit: `feat: add task management UI`.
 - [x] **3. Add smart suggestions.** Implement the OpenRouter adapter, structured validation, fallback, UI action, `.env` configuration, mocked tests, and a manual live check. Suggested commit: `feat: suggest task priority and label`.
 - [x] **4. Prepare local delivery and verify.** Add the demo start command, FastAPI serving of the built frontend, and Playwright smoke coverage for that workflow. Finalize `.env.example` and README, complete clean-checkout verification, and rehearse the demo as described in [local delivery verification](#local-delivery-verification). Suggested commit: `chore: prepare and verify local delivery`.
+- [x] **5. Add manual task ordering.** Persist completion-group positions, add pointer drag-and-drop rearranging for mouse and touch, turn off priority sorting after a drop, and cover the API and browser flow. Suggested commit: `feat: add drag-and-drop task ordering`.
 
 Complete milestones in order and keep the application runnable at each boundary.
 

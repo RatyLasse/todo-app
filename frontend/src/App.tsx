@@ -95,6 +95,23 @@ export default function App() {
     }, "Task deleted.");
   }
 
+  async function reorderTasks(taskIds: number[]) {
+    const taskById = new Map(tasks.map((task) => [task.id, task]));
+    const mergeGroupOrder = (completed: boolean): number[] => {
+      const groupIds = tasks.filter((task) => task.completed === completed).map((task) => task.id);
+      const visibleGroupIds = taskIds.filter((taskId) => taskById.get(taskId)?.completed === completed);
+      const visibleIds = new Set(visibleGroupIds);
+      let visibleIndex = 0;
+      return groupIds.map((taskId) => visibleIds.has(taskId) ? visibleGroupIds[visibleIndex++]! : taskId);
+    };
+    const completeOrder = [mergeGroupOrder(false), mergeGroupOrder(true)].flat();
+    setSortByPriority(false);
+    await mutate(async () => {
+      const reordered = await tasksApi.reorder(completeOrder);
+      setTasks(reordered);
+    }, "Task order updated.");
+  }
+
   return (
     <div className="app-shell">
       <main>
@@ -138,6 +155,11 @@ export default function App() {
                 </label>
               </div>
             </div>
+            <p className="list-hint" role="note">
+              {sortByPriority
+                ? "Drag a task within its group to switch to a custom order."
+                : "Custom order is active. Drag tasks within their group to rearrange them."}
+            </p>
             {listError && <div className="error-message list-error" role="alert">{listError}</div>}
             {loading && <p className="loading-message" role="status">Loading tasks…</p>}
             {visibleTasks.length > 0 && <TaskList
@@ -148,6 +170,8 @@ export default function App() {
               onEdit={(task) => { setEditingTask(task); setMutationError(null); setNotice(""); }}
               onToggle={toggleTask}
               onDelete={deleteTask}
+              reorderEnabled
+              onReorder={reorderTasks}
             />}
             {!loading && !listError && visibleTasks.length === 0 && <div className="empty-state">
               <span className="empty-icon" aria-hidden="true">✓</span>
