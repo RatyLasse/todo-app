@@ -1,8 +1,11 @@
 # Todo App
 
-A small task manager for adding, editing, completing, and deleting tasks, with optional AI suggestions for priority and label. The latest successful edit or deletion can be reversed with Undo. Core task management works without an API key or an available provider.
+A small task manager for adding, editing, completing, and deleting tasks, with optional AI suggestions for priority and label.
+Core task management works without an API key or an available provider.
 
 Built with FastAPI and SQLite, React and TypeScript, Vite, OpenRouter via the OpenAI Python SDK, pytest, Playwright, uv, Ruff, and ty.
+
+![Desktop view of the Todo app with the edit form, task list, priority sorting, and label filtering](docs/screenshots/todo-app-desktop.png)
 
 ## Run the demo
 
