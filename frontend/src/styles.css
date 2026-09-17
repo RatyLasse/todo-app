@@ -49,7 +49,6 @@ input[aria-invalid="true"] { border-color: #a13c32; }
 .secondary:hover:not(:disabled) { background: #f0f4ee; }
 .list-heading { padding: 24px 25px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .list-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.list-hint { color: var(--muted); font-size: 11px; line-height: 1.5; margin: 0 24px 13px; }
 .sort-button.active { background: var(--green); color: white; border-color: var(--green); }
 .sort-button.active:hover:not(:disabled) { background: #104736; color: white; border-color: #104736; }
 .filter-control { display: flex; align-items: center; gap: 8px; margin: 0; white-space: nowrap; }

@@ -215,11 +215,6 @@ export default function App() {
                 </label>
               </div>
             </div>
-            <p className="list-hint" role="note">
-              {sortByPriority
-                ? "Drag a task within its group to switch to a custom order."
-                : "Custom order is active. Drag tasks within their group to rearrange them."}
-            </p>
             {listError && <div className="error-message list-error" role="alert">{listError}</div>}
             {loading && <p className="loading-message" role="status">Loading tasks…</p>}
             {visibleTasks.length > 0 && <TaskList
