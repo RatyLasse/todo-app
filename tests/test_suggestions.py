@@ -150,8 +150,13 @@ def test_sdk_structured_output_request_and_safe_logging(
     assert len(body["messages"]) == 2
     assert body["messages"][1] == {"role": "user", "content": title}
     assert body["messages"][0]["role"] == "system"
-    assert title not in body["messages"][0]["content"]
-    assert "untrusted task text" in body["messages"][0]["content"]
+    instructions = body["messages"][0]["content"]
+    normalized_instructions = " ".join(instructions.split())
+    assert title not in instructions
+    assert "untrusted data" in instructions
+    assert "consequence of delay" in instructions
+    assert '"Replace a broken car tire" -> high' in normalized_instructions
+    assert '"Chill in a hammock" -> low' in normalized_instructions
     assert body["max_completion_tokens"] == 256
     assert body["temperature"] == 0
     assert body["reasoning"] == {"max_tokens": 64}

@@ -28,9 +28,15 @@ def main() -> int:
         ),
         (
             "optional_personal",
-            "Optional: read a novel someday, no rush",
+            "Chill in a hammock",
             "low",
             "personal",
+        ),
+        (
+            "broken_car_tire",
+            "Replace a broken car tire",
+            "high",
+            "other",
         ),
         ("routine_health", "Book a routine dentist appointment", "medium", "health"),
     ]
