@@ -95,9 +95,9 @@ Vite proxies `/api` in development; [local setup and ports](README.md#develop-wi
 
 ### Local delivery
 
-Use native Python and Node.js tooling for local development and delivery. Docker is optional in the exercise brief and cannot run on the current development VM, so Docker packaging is outside scope. Verify the native workflow from a clean checkout and rehearse it for the interview.
+Docker Compose packages the existing demo as one non-root container. Multi-stage builds use npm ci and locked uv dependencies; the runtime contains Python and the built UI. Compose publishes to loopback, persists SQLite in a named volume, and passes AI settings at runtime. Credentials and local artifacts stay outside the build context; a health check verifies startup. See [Docker setup](README.md#run-with-docker-recommended).
 
-The `todo-demo` command checks for `frontend/dist/index.html` and starts FastAPI on loopback with the built UI alongside `/api`: one process and one port, with SQLite stored at the same configured local database path. The application factory accepts an optional frontend directory; only the demo opts into static serving. In API-only mode, serve `/docs` from the root redirect; with the frontend directory, mount static files after API routes and serve the index at `/`. Return `404` for unknown paths and missing assets. No client-side routing fallback is needed for this single-page UI. The build stays in the local checkout rather than the Python wheel. Keep the separate Vite and FastAPI servers for development with automatic reload. README owns the exact [setup, build, and start commands](README.md#run-the-demo).
+`todo-demo` checks for `frontend/dist/index.html` and serves the UI alongside `/api`. It binds to loopback by default, with `--host 0.0.0.0` inside Docker. The application factory accepts an optional frontend directory; static files mount after API routes, and missing paths return `404` without a client-side routing fallback. The UI build stays outside the Python wheel. See [native setup](README.md#run-the-demo-without-docker) and [live-reload development](README.md#develop-with-live-reload).
 
 ## LLM design
 
@@ -143,9 +143,14 @@ Keep the browser suite focused on user flows; backend tests own validation and p
 
 ### Local delivery verification
 
-Run the full [quality checks](AGENTS.md#verification) and verify the documented dependency installation, frontend build, and development/demo start commands from a clean checkout on the development machine. The [demo browser smoke suite](README.md#tests) reuses the task, suggestion-review, and fallback flows against the built UI served by FastAPI through the demo entry point, with an isolated database and no provider calls. Check the health endpoint, task operations, and SQLite persistence after restarting the demo server. Rehearse the task and suggestion workflows, including fallback without an API key; any live-provider check is manual and separate from automated tests.
+Run the [quality checks](AGENTS.md#verification) and verify documented setup from a clean checkout. The [native demo](README.md#tests) and [container smoke suites](README.md#container-verification) reuse task, suggestion-review, and fallback flows on desktop/mobile without live provider calls. Check health and persistence after native process restart and container recreation. Run browser suites sequentially because they share artifacts.
 
-Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable Node.js 24.21.0 (npm 11.19.0): 134 pytest tests, 40 development browser tests, six demo browser tests, Ruff lint/format, ty, and the TypeScript/Vite build passed. A fresh local clone with the pending milestone files applied, without copied dependencies, build output, `.env`, or task data, passed dependency installation and the build. The documented default demo and development commands served the UI and health endpoint; the development API proxy worked. Demo task creation, editing, completion, fallback, deletion, undo, and SQLite persistence across a process restart passed. Browser flows rehearsed editable suggestions, fallback, and undo on desktop and mobile. Live OpenRouter behavior was not rechecked for this delivery-only milestone.
+Verification records:
+
+- **Windows, 2026-09-16:** clean-checkout installation, build, native startup, persistence, 134 pytest tests, 40 development browser tests, six demo tests, and quality checks passed.
+- **Linux, 2026-09-25 (Docker 29.8.1, Compose 5.5.1):** container build/health, non-root execution, persistence after recreation, 136 pytest tests, six container tests, six native demo tests, and quality checks passed. Of 42 development browser checks, one hit a concurrent artifact collision and passed on sequential rerun; the other 41 passed initially.
+
+Neither delivery verification called live OpenRouter.
 
 ## Milestones
 
@@ -156,6 +161,7 @@ Verified on Windows on 2026-09-16 with Python 3.14.7, uv 0.12.13, and portable N
 - [x] **4. Prepare local delivery and verify.** Add the demo start command, FastAPI serving of the built frontend, and Playwright smoke coverage for that workflow. Finalize `.env.example` and README, complete clean-checkout verification, and rehearse the demo as described in [local delivery verification](#local-delivery-verification). Suggested commit: `chore: prepare and verify local delivery`.
 - [x] **5. Add manual task ordering.** Persist completion-group positions, add pointer drag-and-drop rearranging for mouse and touch, turn off priority sorting after a drop, and cover the API and browser flow. Suggested commit: `feat: add drag-and-drop task ordering`.
 - [x] **6. Add undo for edits and deletions.** Add the atomic restore route, expose a one-shot Undo action for the latest successful edit or deletion, and cover the behavior in API and browser tests. Suggested commit: `feat: add task undo`.
+- [x] **7. Containerize delivery.** Add a single-command Compose workflow, persistent storage, runtime AI configuration, and verified container browser flows. Suggested commit: `chore: containerize app delivery`.
 
 Complete milestones in order and keep the application runnable at each boundary.
 

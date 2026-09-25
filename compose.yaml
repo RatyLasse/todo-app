@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:${TODO_PORT:-8000}:8000"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-nex-agi/nex-n2.5-mini:free}
+    volumes:
+      - tasks:/app/data
+    init: true
+
+volumes:
+  tasks:

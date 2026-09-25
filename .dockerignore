@@ -1,0 +1,26 @@
+# Only include build inputs; exclude credentials, databases and local artifacts.
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!src/**
+!frontend/
+frontend/**
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/index.html
+!frontend/tsconfig.json
+!frontend/vite.config.ts
+!frontend/src/
+!frontend/src/**
+!frontend/public/
+!frontend/public/**
+**/__pycache__/
+**/.env
+**/.env.*
+**/*.sqlite3
+**/*.sqlite3-*
+**/node_modules/
+**/.venv/

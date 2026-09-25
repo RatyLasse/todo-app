@@ -93,3 +93,24 @@ def test_demo_rejects_invalid_port(monkeypatch: pytest.MonkeyPatch, port: str) -
     monkeypatch.setattr("sys.argv", ["todo-demo", "--port", port])
     with pytest.raises(SystemExit, match="2"):
         demo.main()
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "0.0.0.0"])
+def test_demo_binding(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, host: str
+) -> None:
+    build = tmp_path / "frontend" / "dist"
+    build.mkdir(parents=True)
+    (build / "index.html").write_text("<html>Todo App</html>", encoding="utf-8")
+    arguments = ["todo-demo", "--port", "8001"]
+    if host != "127.0.0.1":
+        arguments.extend(["--host", host])
+    monkeypatch.setattr("sys.argv", arguments)
+    calls: list[dict[str, object]] = []
+
+    def capture_run(app: object, **kwargs: object) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(demo.uvicorn, "run", capture_run)
+    demo.main()
+    assert calls == [{"host": host, "port": 8001}]

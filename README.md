@@ -7,7 +7,26 @@ Built with FastAPI and SQLite, React and TypeScript, Vite, OpenRouter via the Op
 
 ![Desktop view of the Todo app with the edit form, task list, priority sorting, and label filtering](docs/screenshots/todo-app-desktop.png)
 
-## Run the demo
+## Run with Docker (recommended)
+
+Install and start Docker Desktop (or Docker Engine with Compose), then run from the repository root:
+
+```sh
+docker compose up --build
+```
+
+Open **<http://127.0.0.1:8000>**. No local Python, Node.js, or API key is needed; the first build requires internet access. The app is accessible only from your machine by default.
+
+Press **Ctrl+C** to stop; rerun the command to start again or apply code/configuration changes. Tasks persist in a named volume, separate from native demo data, even after `docker compose down`. To erase them, use `docker compose down --volumes`.
+
+Optional settings in `.env` (copy [.env.example](.env.example)):
+
+- `OPENROUTER_API_KEY`: enable [live AI suggestions](#ai-suggestions).
+- `TODO_PORT=8001`: use <http://127.0.0.1:8001> if port 8000 is occupied.
+
+`TODO_DATABASE_PATH` applies only to native runs; Docker uses its volume. For background operation, add `-d --wait` to the start command. Use `docker compose ps` for status and `docker compose logs app` for logs.
+
+## Run the demo without Docker
 
 Install [uv](https://docs.astral.sh/uv/) and [Node.js 24 LTS](https://nodejs.org/en/download), including npm. From the repository root, install dependencies, build the frontend, and start the single-process demo:
 
@@ -24,7 +43,7 @@ Tasks persist in `data/tasks.sqlite3` across restarts. The app uses fallback AI 
 
 ## Develop with live reload
 
-`uv run todo-demo` is the normal way to run the app. When actively changing code, use the two-terminal setup below for automatic backend and frontend reloads:
+`uv run todo-demo` runs the native demo after the setup above. When actively changing code, use the two-terminal setup below for automatic backend and frontend reloads:
 
 ```sh
 uv run uvicorn todo_app.main:create_app --factory --reload
@@ -90,6 +109,20 @@ npm --prefix frontend run test:demo
 ```
 
 This suite runs the task workflow, editable suggestion review, and missing-key fallback against FastAPI serving the built UI.
+
+### Container verification
+
+Run the same desktop/mobile smoke flows against a **disposable** container on port 18002. Tests delete its tasks and disable live AI calls. These commands use a POSIX shell (WSL or Git Bash on Windows):
+
+```sh
+npm --prefix frontend ci
+npm --prefix frontend exec -- playwright install chromium
+TODO_PORT=18002 OPENROUTER_API_KEY= docker compose -p todo-container-test up --build -d --wait
+npm --prefix frontend exec -- playwright test --config frontend/playwright.container.config.ts
+TODO_PORT=18002 docker compose -p todo-container-test down --volumes
+```
+
+Run browser suites sequentially because they share test artifacts. To check persistence in the normal app, add a task, run `docker compose down` followed by `docker compose up -d --wait`, and reload.
 
 ## Design notes
 
